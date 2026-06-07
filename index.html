@@ -63,6 +63,7 @@ select option{background:var(--card)}
 .ref-slot .rm{position:absolute;top:4px;right:4px;width:20px;height:20px;background:rgba(13,13,13,0.88);border:none;color:var(--t1);border-radius:3px;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer}
 .ref-slot.filled .rm{display:flex}
 .ref-hint{font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:8px}
+.ref-note{font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:6px;min-height:12px;line-height:1.5}
 
 /* BUTTON */
 .btn-gen{width:100%;margin-top:16px;padding:18px;background:var(--or);border:none;color:#000;font-family:var(--mono);font-size:13px;letter-spacing:0.2em;font-weight:500;cursor:pointer;border-radius:6px;transition:all 0.15s;-webkit-appearance:none}
@@ -319,10 +320,12 @@ select option{background:var(--card)}
 
       <div class="ref-header">
         <span>Referências visuais</span>
+        <button class="btn-copy" id="clearRefsBtn" onclick="clearRefs()" type="button" style="margin-left:auto;margin-right:8px;padding:4px 8px">limpar refs</button>
         <span class="ref-count-badge"><span id="refCount">0</span>/6</span>
       </div>
       <div class="ref-grid" id="refGrid"></div>
       <div class="ref-hint">sujeito · roupa · render · fachada · estilo</div>
+      <div class="platform-note" id="refNote"></div>
 
       <button class="btn-gen" id="genBtn" onclick="gen()">▶ GERAR PROMPT</button>
     </div>
@@ -733,6 +736,7 @@ function syncModelSelectors(source) {
     arSel.innerHTML = renderAspectOptions(engine, platform, arCurrent);
     if (!getAllowedAspectRatios(engine, platform).includes(arSel.value)) arSel.value = getAllowedAspectRatios(engine, platform)[0] || "";
     renderVideoOptions(engine);
+    updateRefCompatibility();
   } finally {
     syncingSelectors = false;
   }
@@ -832,6 +836,12 @@ function toggleKey() {
 
 function onPlatform() {
   syncModelSelectors("platform");
+}
+
+function clearRefs() {
+  refs = new Array(6).fill(null);
+  buildGrid();
+  updateRefCompatibility();
 }
 
 function saveKeys() {
@@ -1140,6 +1150,46 @@ function buildGrid() {
     g.appendChild(s);
   }
   document.getElementById("refCount").textContent = refs.filter(Boolean).length;
+  updateRefCompatibility();
+}
+
+function getRefCompatibility(engine, platform) {
+  const activeRefs = refs.filter(Boolean);
+  const refRule = getRefRule(engine);
+  const count = activeRefs.length;
+  if (!engine || !platform) {
+    return { ok:true, level:"", msg: count ? `${count} ref(s) carregada(s). Selecione engine e plataforma para validar compatibilidade.` : "" };
+  }
+  const allowSingleRefOnImagineArtVideo = platform === "ImagineArt" && VIDEO_ENGINES.has(engine) && count === 1;
+  if (refRule.mode === "none" && count && !allowSingleRefOnImagineArtVideo) {
+    return { ok:false, level:"err", msg:`"${engine}" não aceita imagem de referência. Você tem ${count} ref(s) carregada(s). Limpe as refs ou troque de engine.` };
+  }
+  if ((refRule.mode === "single" || refRule.mode === "optional-single") && count > 1) {
+    return { ok:false, level:"err", msg:`"${engine}" aceita só 1 imagem de referência. Você tem ${count}.` };
+  }
+  if (refRule.maxRefs && count > refRule.maxRefs) {
+    return { ok:false, level:"err", msg:`"${engine}" aceita no máximo ${refRule.maxRefs} imagens de referência. Você tem ${count}.` };
+  }
+  if (count === 0 && ["single","multi","required-single","required-multi"].includes(refRule.mode)) {
+    return { ok:false, level:"warn", msg:`"${engine}" pede imagem(ns) de referência antes de enviar.` };
+  }
+  if (count && refRule.mode !== "none") {
+    return { ok:true, level:"ok", msg:`${count} ref(s) pronta(s) para "${engine}".` };
+  }
+  return { ok:true, level:"", msg: count ? `${count} ref(s) carregada(s).` : "" };
+}
+
+function updateRefCompatibility() {
+  const note = document.getElementById("refNote");
+  const sendBtn = document.getElementById("sendBtn");
+  if (!note || !sendBtn) return;
+  const engine = document.getElementById("engineSel")?.value || "";
+  const platform = document.getElementById("platSel")?.value || "";
+  const info = getRefCompatibility(engine, platform);
+  note.textContent = info.msg || "";
+  note.style.color = info.level === "err" ? "var(--err)" : info.level === "warn" ? "var(--or)" : info.level === "ok" ? "var(--ok)" : "var(--t2)";
+  const canSend = info.ok !== false;
+  sendBtn.disabled = !canSend || !engine || !platform;
 }
 
 // ─── SYSTEM PROMPT — METODOLOGIA AKASHI ───────────────────────────────────
@@ -1556,6 +1606,7 @@ function showGenCard(engine, platform) {
   document.getElementById("genCard").style.display = "";
   document.getElementById("genCardTitle").textContent = `GERAR — ${engine}`;
   document.getElementById("sendBtn").innerHTML = `▶ GERAR VIA ${(platform||"plataforma").toUpperCase()}`;
+  updateRefCompatibility();
   document.getElementById("genResult").innerHTML = "";
 }
 
@@ -1569,23 +1620,8 @@ function validateSendState(engine, platform) {
   if (platform === "Muapi.ai" && !MUAPI_SLUG[engine]) {
     throw new Error(`"${engine}" ainda não está mapeada para envio via MuAPI neste app.`);
   }
-
-  const activeRefs = refs.filter(Boolean);
-  const refRule = getRefRule(engine);
-  const allowSingleRefOnImagineArtVideo = platform === "ImagineArt" && VIDEO_ENGINES.has(engine) && activeRefs.length === 1;
-  const requiresRefs = ["single","multi","required-single","required-multi"].includes(refRule.mode);
-  if (refRule.mode === "none" && activeRefs.length && !allowSingleRefOnImagineArtVideo) {
-    throw new Error(`"${engine}" não aceita imagem de referência. Remova as refs ou troque de engine.`);
-  }
-  if ((refRule.mode === "single" || refRule.mode === "optional-single") && activeRefs.length > 1) {
-    throw new Error(`"${engine}" aceita só 1 imagem de referência.`);
-  }
-  if (requiresRefs && activeRefs.length === 0 && !allowSingleRefOnImagineArtVideo) {
-    throw new Error(`Adicione ao menos 1 imagem de referência para "${engine}".`);
-  }
-  if (refRule.maxRefs && activeRefs.length > refRule.maxRefs) {
-    throw new Error(`"${engine}" aceita no máximo ${refRule.maxRefs} imagens de referência.`);
-  }
+  const refInfo = getRefCompatibility(engine, platform);
+  if (refInfo.ok === false) throw new Error(refInfo.msg);
 
   const ar = document.getElementById("arSel").value;
   const allowedAr = getAllowedAspectRatios(engine, platform);
