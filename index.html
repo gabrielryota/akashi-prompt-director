@@ -69,6 +69,9 @@ select option{background:var(--card)}
 .btn-gen:active{background:#f5a020;transform:scale(0.98)}
 .btn-gen:disabled{opacity:0.4;pointer-events:none}
 .btn-gen.loading{background:var(--or3);border:1px solid var(--or2);color:var(--or)}
+.btn-real{width:100%;margin-top:8px;padding:12px;background:var(--input);border:1px solid var(--border2);color:var(--t1);font-family:var(--mono);font-size:10px;letter-spacing:0.18em;border-radius:6px;cursor:pointer;transition:all 0.15s;-webkit-appearance:none}
+.btn-real:active{transform:scale(0.98)}
+.btn-real.active{background:var(--or3);border-color:var(--or2);color:var(--or)}
 
 /* OUTPUT */
 .out-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
@@ -158,6 +161,7 @@ select option{background:var(--card)}
     <div class="card-body">
       <div class="field">
         <textarea id="ctx" rows="4" placeholder="Ex: fachada residencial concreto aparente tarde, mulher 30 anos café manhã janela, cenário urbano chuva Tokyo"></textarea>
+        <button class="btn-real" id="realBtn" onclick="toggleReal()" type="button">MAKE IT REAL</button>
       </div>
 
       <div class="field">
@@ -481,6 +485,9 @@ let refs = new Array(6).fill(null);
 let lastOut = null;
 let hist = [];
 let keys = { anthropic:"", openai:"", muapi:"", imagineart:"", google:"" };
+let makeItReal = false;
+
+const MAKE_IT_REAL_TEXT = "The final image should feel raw, effortless, and genuine—like an unposed everyday portrait, captured naturally in available light, without heavy editing, beauty filters, or excessive retouching.";
 
 const KEY_DEFS = [
   { id:"anthropic",   label:"ANTHROPIC",   ph:"sk-ant-api03-..." },
@@ -544,6 +551,17 @@ function updateKeyBadge() {
   const b = document.getElementById("keyBadge");
   b.textContent = count + " configurada" + (count !== 1 ? "s" : "");
   b.style.color = count > 0 ? "var(--ok)" : "var(--t2)";
+}
+
+function toggleReal() {
+  makeItReal = !makeItReal;
+  const btn = document.getElementById("realBtn");
+  btn.classList.toggle("active", makeItReal);
+}
+
+function applyMakeItReal(text) {
+  if (!makeItReal || !text) return text;
+  return text.includes(MAKE_IT_REAL_TEXT) ? text : `${text}\n\n${MAKE_IT_REAL_TEXT}`;
 }
 
 // Legacy compat (anthropic key used for prompt generation)
@@ -770,12 +788,12 @@ async function gen() {
     if (!raw) throw new Error("Resposta vazia.");
 
     const extract = tag => { const m = raw.match(new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`)); return m ? m[1].trim() : ""; };
-    const pt = extract("PT"), en = extract("EN"), neg = extract("NEG");
+    const pt = extract("PT"), en = applyMakeItReal(extract("EN")), neg = extract("NEG");
 
     lastOut = {pt, en, neg};
     showOutput(pt, en, neg, engine, platform, scene, activeRefs.length);
     showGenCard(engine, platform);
-    await saveHist({engine, platform, scene, ctx, pt, en, neg, refs:activeRefs.length, ts:Date.now()});
+    await saveHist({engine, platform, scene, ctx, pt, en, neg, refs:activeRefs.length, makeItReal, ts:Date.now()});
 
   } catch(e) { showErr("Erro: " + e.message); }
   finally { btn.disabled=false; btn.classList.remove("loading"); btn.innerHTML="▶ GERAR PROMPT"; }
@@ -1105,6 +1123,8 @@ function loadH(i) {
   if (h.engine) { document.getElementById("engineSel").value = h.engine; onEngine(); }
   if (h.scene)  document.getElementById("sceneSel").value = h.scene;
   if (h.ctx)    document.getElementById("ctx").value = h.ctx;
+  makeItReal = !!h.makeItReal;
+  document.getElementById("realBtn").classList.toggle("active", makeItReal);
   window.scrollTo({top:0, behavior:"smooth"});
 }
 </script>
