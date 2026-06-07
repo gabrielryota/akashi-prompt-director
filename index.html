@@ -179,8 +179,10 @@ select option{background:var(--card)}
             <option>GPT-4o Image</option>
             <option>Gpt Image 2 Edit</option>
             <option>GPT-4o Edit</option>
+            <option>Chatgpt</option>
           </optgroup>
           <optgroup label="Imagem — Google">
+            <option>Nano Banana</option>
             <option>Nano Banana Pro</option>
             <option>Nano Banana 2</option>
             <option>Nano Banana Pro Edit</option>
@@ -190,6 +192,9 @@ select option{background:var(--card)}
             <option>Imagen 4 Pro</option>
           </optgroup>
           <optgroup label="Imagem — Flux">
+            <option>Flux Dev</option>
+            <option>Flux 1.1 Ultra</option>
+            <option>Flux.2 Max</option>
             <option>Flux Kontext Pro</option>
             <option>Flux Kontext Max</option>
             <option>Flux Kontext Pro I2I</option>
@@ -198,24 +203,36 @@ select option{background:var(--card)}
             <option>Flux 2 Flex</option>
             <option>Flux Pulid</option>
             <option>Flux Redux</option>
+            <option>Krea Flux 1</option>
           </optgroup>
           <optgroup label="Imagem — Bytedance">
+            <option>Seedream v4</option>
+            <option>Seedream v4.5</option>
+            <option>Seedream v5 Lite</option>
             <option>Seedream 5.0</option>
             <option>Seedream 5.0 Edit</option>
-            <option>Seedream v4.5</option>
             <option>Bytedance Seededit v3</option>
           </optgroup>
           <optgroup label="Imagem — ImagineArt">
             <option>ImagineArt 2.0</option>
             <option>ImagineArt 1.5</option>
+            <option>ImagineArt 1.5 Pro</option>
+            <option>Imagine</option>
+            <option>Recraft v4</option>
             <option>Recraft V4 Pro</option>
           </optgroup>
           <optgroup label="Imagem — Outros">
+            <option>Z Image Turbo</option>
+            <option>Dreamina 3.1</option>
             <option>Grok Imagine</option>
+            <option>xAI Grok Imagine</option>
             <option>Ideogram v3</option>
+            <option>Qwen Image</option>
             <option>Qwen Image Edit</option>
             <option>Wan2.5 Image Edit</option>
+            <option>Minimax Image</option>
             <option>Minimax Image 01 Subject Reference</option>
+            <option>Midjourney V7</option>
             <option>Vidu Q2 Reference To Image</option>
           </optgroup>
           <optgroup label="Ferramentas">
@@ -436,6 +453,8 @@ const EP = {
   "GPT-4o Image":           {p:["Muapi.ai","OpenAI API"],                n:""},
   "Gpt Image 2 Edit":       {p:["Muapi.ai","OpenAI API"],                n:""},
   "GPT-4o Edit":            {p:["Muapi.ai","OpenAI API"],                n:""},
+  "Chatgpt":                {p:["OpenAI API","ImagineArt"],              n:"ChatGPT image generation"},
+  "Nano Banana":            {p:["Muapi.ai","ImagineArt","Gemini"],      n:"Google · Base model"},
   "Nano Banana Pro":        {p:["Muapi.ai","ImagineArt","Gemini"],      n:"Google · Melhor modelo de imagem Google"},
   "Nano Banana 2":          {p:["Muapi.ai","ImagineArt","Gemini"],      n:"Google · Modelo mais recente"},
   "Nano Banana Pro Edit":   {p:["Muapi.ai"],                             n:""},
@@ -443,6 +462,9 @@ const EP = {
   "Nano Banana Effects":    {p:["Muapi.ai"],                             n:""},
   "Imagen 4 Ultra":         {p:["Muapi.ai","Gemini","Google AI Studio (pré-pago)"], n:"⚠ AI Studio pré-pago — não Google Cloud pós-pago"},
   "Imagen 4 Pro":           {p:["Muapi.ai","Gemini","Google AI Studio (pré-pago)"], n:"⚠ AI Studio pré-pago — não Google Cloud pós-pago"},
+  "Flux Dev":               {p:["Muapi.ai","ImagineArt"],                n:"Great aesthetics and prompt adherence"},
+  "Flux 1.1 Ultra":        {p:["Muapi.ai","ImagineArt"],                n:"BFL's highest quality text to image model"},
+  "Flux.2 Max":             {p:["Muapi.ai","ImagineArt"],                n:"Next-level multi-image generation and editing"},
   "Flux Kontext Pro":       {p:["Muapi.ai"],                             n:"Edição por contexto"},
   "Flux Kontext Max":       {p:["Muapi.ai"],                             n:""},
   "Flux Kontext Pro I2I":   {p:["Muapi.ai"],                             n:""},
@@ -451,18 +473,30 @@ const EP = {
   "Flux 2 Flex":            {p:["Muapi.ai"],                             n:""},
   "Flux Pulid":             {p:["Muapi.ai"],                             n:"Identity preservation"},
   "Flux Redux":             {p:["Muapi.ai"],                             n:""},
+  "Krea Flux 1":            {p:["ImagineArt"],                           n:"Photorealistic AI image generation with a distinctive aesthetic edge"},
+  "Seedream v4":            {p:["Muapi.ai","ImagineArt"],                n:"New fast, high-quality model from ByteDance"},
+  "Seedream v4.5":          {p:["Muapi.ai","ImagineArt"],               n:"New fast, high-quality model from ByteDance"},
+  "Seedream v5 Lite":       {p:["Muapi.ai","ImagineArt"],               n:"New fast, high-quality model from ByteDance"},
   "Seedream 5.0":           {p:["Muapi.ai","ImagineArt"],                n:""},
   "Seedream 5.0 Edit":      {p:["Muapi.ai"],                             n:""},
-  "Seedream v4.5":          {p:["Muapi.ai"],                             n:""},
-  "Bytedance Seededit v3":  {p:["Muapi.ai"],                             n:""},
+  "Bytedance Seededit v3":  {p:["Muapi.ai","ImagineArt"],                n:""},
   "ImagineArt 2.0":         {p:["ImagineArt"],                           n:"Modelo realista mais recente"},
   "ImagineArt 1.5":         {p:["ImagineArt"],                           n:"Top-ranked realismo"},
+  "ImagineArt 1.5 Pro":     {p:["ImagineArt"],                           n:"Pro variant"},
+  "Imagine":                {p:["ImagineArt"],                           n:"Flux Schnell"},
+  "Recraft v4":             {p:["ImagineArt"],                           n:""},
   "Recraft V4 Pro":         {p:["ImagineArt"],                           n:""},
-  "Grok Imagine":           {p:["Muapi.ai"],                             n:""},
-  "Ideogram v3":            {p:["Muapi.ai"],                             n:"Ótimo para texto na imagem"},
-  "Qwen Image Edit":        {p:["Muapi.ai"],                             n:""},
+  "xAI Grok Imagine":       {p:["Muapi.ai","ImagineArt"],                n:""},
+  "Grok Imagine":           {p:["Muapi.ai","ImagineArt"],                n:""},
+  "Ideogram v3":            {p:["Muapi.ai","ImagineArt"],                n:"Ótimo para texto na imagem"},
+  "Qwen Image":             {p:["Muapi.ai","ImagineArt"],                n:""},
+  "Qwen Image Edit":        {p:["Muapi.ai","ImagineArt"],                n:""},
   "Wan2.5 Image Edit":      {p:["Muapi.ai"],                             n:""},
-  "Minimax Image 01 Subject Reference":{p:["Muapi.ai"],                  n:""},
+  "Minimax Image":          {p:["Muapi.ai","ImagineArt"],                n:""},
+  "Minimax Image 01 Subject Reference":{p:["Muapi.ai","ImagineArt"],     n:""},
+  "Midjourney V7":          {p:["ImagineArt"],                           n:""},
+  "Z Image Turbo":          {p:["ImagineArt"],                           n:""},
+  "Dreamina 3.1":           {p:["ImagineArt"],                           n:""},
   "Vidu Q2 Reference To Image":{p:["Muapi.ai"],                          n:""},
   "AI Background Remover":  {p:["Muapi.ai"],                             n:"Ferramenta · Sem prompt criativo"},
   "AI Background Changer":  {p:["ImagineArt"],                           n:"Descrever novo background"},
@@ -483,12 +517,12 @@ const EP = {
 const PLATFORM_ORDER = ["Muapi.ai","OpenAI API","ImagineArt","Gemini","Google AI Studio (pré-pago)"];
 const ENGINE_GROUPS = [
   { label:"Vídeo", items:["Kling 3.0","Kling 2.1","Seedance 2.0","Veo 3.1","HappyHorse 1.0 ⚠","Runway Gen-4","Wan2.6 Video"] },
-  { label:"Imagem — OpenAI", items:["GPT Image 2","GPT Image 1.5","GPT-4o Image","Gpt Image 2 Edit","GPT-4o Edit"] },
-  { label:"Imagem — Google", items:["Nano Banana Pro","Nano Banana 2","Nano Banana Pro Edit","Nano Banana 2 Edit","Nano Banana Effects","Imagen 4 Ultra","Imagen 4 Pro"] },
-  { label:"Imagem — Flux", items:["Flux Kontext Pro","Flux Kontext Max","Flux Kontext Pro I2I","Flux Kontext Effects","Flux 2 Pro","Flux 2 Flex","Flux Pulid","Flux Redux"] },
-  { label:"Imagem — Bytedance", items:["Seedream 5.0","Seedream 5.0 Edit","Seedream v4.5","Bytedance Seededit v3"] },
-  { label:"Imagem — ImagineArt", items:["ImagineArt 2.0","ImagineArt 1.5","Recraft V4 Pro"] },
-  { label:"Imagem — Outros", items:["Grok Imagine","Ideogram v3","Qwen Image Edit","Wan2.5 Image Edit","Minimax Image 01 Subject Reference","Vidu Q2 Reference To Image"] },
+  { label:"Imagem — OpenAI", items:["GPT Image 2","GPT Image 1.5","GPT-4o Image","Gpt Image 2 Edit","GPT-4o Edit","Chatgpt"] },
+  { label:"Imagem — Google", items:["Nano Banana","Nano Banana Pro","Nano Banana 2","Nano Banana Pro Edit","Nano Banana 2 Edit","Nano Banana Effects","Imagen 4 Ultra","Imagen 4 Pro"] },
+  { label:"Imagem — Flux", items:["Flux Dev","Flux 1.1 Ultra","Flux.2 Max","Flux Kontext Pro","Flux Kontext Max","Flux Kontext Pro I2I","Flux Kontext Effects","Flux 2 Pro","Flux 2 Flex","Flux Pulid","Flux Redux","Krea Flux 1"] },
+  { label:"Imagem — Bytedance", items:["Seedream v4","Seedream v4.5","Seedream v5 Lite","Seedream 5.0","Seedream 5.0 Edit","Bytedance Seededit v3"] },
+  { label:"Imagem — ImagineArt", items:["ImagineArt 2.0","ImagineArt 1.5","ImagineArt 1.5 Pro","Imagine","Recraft v4","Recraft V4 Pro"] },
+  { label:"Imagem — Outros", items:["Z Image Turbo","Dreamina 3.1","Grok Imagine","xAI Grok Imagine","Ideogram v3","Qwen Image","Qwen Image Edit","Wan2.5 Image Edit","Minimax Image","Minimax Image 01 Subject Reference","Midjourney V7","Vidu Q2 Reference To Image"] },
   { label:"Ferramentas", items:["AI Background Remover","AI Background Changer","AI Image Extension","AI Image Upscaler","Topaz Image Upscale","AI Object Eraser","AI Face Swap","AI Dress Change","AI Clothes Changer","AI Skin Enhancer","AI Color Photo","AI Ghibli Style","AI Product Photography","AI Product Shot"] },
 ];
 
