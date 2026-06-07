@@ -770,7 +770,7 @@ function buildPrefFields() {
       <input type="text" id="pi_${d.id}" placeholder="${d.ph}" autocomplete="off" inputmode="url"
         style="width:100%;background:var(--input);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:12px;padding:11px;border-radius:6px;outline:none;-webkit-appearance:none">
       <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:5px;line-height:1.5">
-        Use no celular apontando para um Worker público. Se deixar vazio, o app usa o proxy local do PC quando estiver em localhost.
+        Use no celular apontando para um Worker público. Com uma URL pública preenchida, a chave da MuAPI pode ficar só no Worker.
       </div>
     </div>
   `).join("");
@@ -1273,10 +1273,10 @@ function normalizeMuapiBaseUrl(value) {
 function explainMuapiNetworkError(error) {
   const usingLocalProxy = getMuapiBaseUrl().startsWith("http://localhost");
   if (usingLocalProxy && /Failed to fetch|NetworkError|Load failed/i.test(error.message || "")) {
-    return "Não consegui falar com o Open-Generative-AI local. Abra no PC: cd ~/Open-Generative-AI && npm run dev. Se o Chrome bloquear acesso à rede local, use a versão local: http://localhost:3000/akashi/index.html";
+    return "Não consegui falar com o bridge local. Se quiser sair da dependência do Mac, use um BRIDGE URL público.";
   }
   if (/Failed to fetch|NetworkError|Load failed/i.test(error.message || "")) {
-    return "O navegador bloqueou a chamada direta para MuAPI. No GitHub Pages e no celular, preencha BRIDGE URL com um proxy público do Open-Generative-AI. O localhost do Mac só funciona quando o navegador está no próprio computador.";
+    return "O navegador bloqueou a chamada direta para MuAPI. No GitHub Pages e no celular, preencha BRIDGE URL com um proxy público.";
   }
   return error.message;
 }
@@ -1386,7 +1386,6 @@ function showGenError(msg) {
 // ─── MUAPI ────────────────────────────────────────────────────────────────
 async function sendMuapi(engine, prompt, neg) {
   const key = getKey("muapi");
-  if (!key) throw new Error("Key Muapi não configurada em ⚙");
 
   const slug = MUAPI_SLUG[engine];
   if (!slug) throw new Error(`Engine "${engine}" não mapeada para slug Muapi. Use o prompt EN manualmente.`);
@@ -1395,8 +1394,8 @@ async function sendMuapi(engine, prompt, neg) {
   const isEdit = !!MUAPI_EDIT_IMAGE_FIELD[engine];
   const baseUrl = getMuapiBaseUrl();
   const bridgeRoot = getBridgeRoot();
-  if (!bridgeRoot && !(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.startsWith("192.168."))) {
-    throw new Error("Preencha BRIDGE URL com um proxy público do Open-Generative-AI. Na página pública, a chamada direta para MuAPI é bloqueada pelo navegador.");
+  if (!bridgeRoot && !key && !(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.startsWith("192.168."))) {
+    throw new Error("Preencha BRIDGE URL com um proxy público. Na página pública, a chamada direta para MuAPI é bloqueada pelo navegador.");
   }
   const ar = document.getElementById("arSel").value;
   const payload = { prompt, aspect_ratio: ar };
@@ -1427,12 +1426,15 @@ async function sendMuapi(engine, prompt, neg) {
   }
 
   showStatus(baseUrl.includes("localhost")
-    ? "usando Open-Generative-AI local em localhost:3000…"
+    ? "usando bridge local em localhost:3000…"
     : "enviando direto para MuAPI…");
 
   const res = await fetch(`${baseUrl}/${slug}`, {
     method:"POST",
-    headers:{"Content-Type":"application/json","x-api-key":key},
+    headers:{
+      "Content-Type":"application/json",
+      ...(key ? {"x-api-key":key} : {}),
+    },
     body:JSON.stringify(payload)
   });
   if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error("Muapi: "+(e.message||e.error||"HTTP "+res.status)); }
@@ -1450,7 +1452,7 @@ async function uploadMuapiRefs(baseUrl, key, activeRefs) {
     const ref = activeRefs[i];
     const res = await fetch(`${baseUrl}/upload_file`, {
       method: "POST",
-      headers: {"x-api-key": key},
+      headers: key ? {"x-api-key": key} : {},
       body: (() => {
         const fd = new FormData();
         const mime = ref.mt || "image/jpeg";
@@ -1484,7 +1486,7 @@ async function pollMuapi(rid, key, isVideo, baseUrl) {
       if (attempts > maxAttempts) { clearInterval(iv); reject(new Error("Timeout Muapi — tente mais tarde")); return; }
       try {
         const r = await fetch(`${baseUrl}/predictions/${rid}/result`, {
-          headers:{"x-api-key":key}
+          headers:key ? {"x-api-key":key} : {}
         });
         if (!r.ok) {
           if (r.status >= 500) return;
