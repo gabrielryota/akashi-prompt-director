@@ -943,7 +943,7 @@ function getMuapiBaseUrl() {
   const proxy = normalizeMuapiBaseUrl(prefs.muapiProxy || localStorage.getItem("ak_muapi_proxy") || "");
   if (proxy) return proxy;
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.")) {
+  if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.includes("ngrok")) {
     return `${window.location.origin}/api/v1`;
   }
   return "https://api.muapi.ai/api/v1";
