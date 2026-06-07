@@ -716,7 +716,7 @@ let refs = new Array(6).fill(null);
 let lastOut = null;
 let hist = [];
 let keys = { anthropic:"", openai:"", muapi:"", imagineart:"", google:"" };
-let prefs = { muapiProxy:"" };
+let prefs = { muapiProxy:"", bridgeToken:"" };
 let makeItReal = false;
 
 const MAKE_IT_REAL_TEXT = "The final image should feel raw, effortless, and genuine—like an unposed everyday portrait, captured naturally in available light, without heavy editing, beauty filters, or excessive retouching.";
@@ -730,6 +730,7 @@ const KEY_DEFS = [
 ];
 const PREF_DEFS = [
   { id:"muapiProxy", label:"BRIDGE URL", ph:"https://seu-projeto.vercel.app" },
+  { id:"bridgeToken", label:"BRIDGE TOKEN", ph:"um token forte só seu" },
 ];
 
 // ─── INIT ──────────────────────────────────────────────────────────────────
@@ -770,7 +771,7 @@ function buildPrefFields() {
       <input type="text" id="pi_${d.id}" placeholder="${d.ph}" autocomplete="off" inputmode="url"
         style="width:100%;background:var(--input);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:12px;padding:11px;border-radius:6px;outline:none;-webkit-appearance:none">
       <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:5px;line-height:1.5">
-        Use no celular apontando para um Worker público. Com uma URL pública preenchida, a chave da MuAPI pode ficar só no Worker.
+        Use no celular apontando para um Worker público. Com URL e token preenchidos, a chave da MuAPI pode ficar só no Worker.
       </div>
     </div>
   `).join("");
@@ -811,9 +812,11 @@ function saveKeys() {
     if (el) keys[d.id] = el.value.trim();
   });
   sessionStorage.setItem("ak_muapi_proxy", prefs.muapiProxy || "");
+  sessionStorage.setItem("ak_bridge_token", prefs.bridgeToken || "");
   sessionStorage.setItem("ak_prefs", JSON.stringify(prefs));
   sessionStorage.setItem("ak_keys", JSON.stringify(keys));
   localStorage.removeItem("ak_muapi_proxy");
+  localStorage.removeItem("ak_bridge_token");
   localStorage.removeItem("ak_prefs");
   localStorage.removeItem("ak_keys");
   updateKeyBadge();
@@ -1264,6 +1267,10 @@ function getBridgeRoot() {
   return "";
 }
 
+function getBridgeToken() {
+  return (prefs.bridgeToken || sessionStorage.getItem("ak_bridge_token") || localStorage.getItem("ak_bridge_token") || "").trim();
+}
+
 function normalizeMuapiBaseUrl(value) {
   const root = normalizeBridgeRoot(value);
   if (!root) return "";
@@ -1394,6 +1401,7 @@ async function sendMuapi(engine, prompt, neg) {
   const isEdit = !!MUAPI_EDIT_IMAGE_FIELD[engine];
   const baseUrl = getMuapiBaseUrl();
   const bridgeRoot = getBridgeRoot();
+  const bridgeToken = getBridgeToken();
   if (!bridgeRoot && !key && !(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.startsWith("192.168."))) {
     throw new Error("Preencha BRIDGE URL com um proxy público. Na página pública, a chamada direta para MuAPI é bloqueada pelo navegador.");
   }
@@ -1434,6 +1442,7 @@ async function sendMuapi(engine, prompt, neg) {
     headers:{
       "Content-Type":"application/json",
       ...(key ? {"x-api-key":key} : {}),
+      ...(bridgeToken ? {"x-akashi-token": bridgeToken} : {}),
     },
     body:JSON.stringify(payload)
   });
@@ -1452,7 +1461,10 @@ async function uploadMuapiRefs(baseUrl, key, activeRefs) {
     const ref = activeRefs[i];
     const res = await fetch(`${baseUrl}/upload_file`, {
       method: "POST",
-      headers: key ? {"x-api-key": key} : {},
+      headers: {
+        ...(key ? {"x-api-key": key} : {}),
+        ...(getBridgeToken() ? {"x-akashi-token": getBridgeToken()} : {}),
+      },
       body: (() => {
         const fd = new FormData();
         const mime = ref.mt || "image/jpeg";
@@ -1486,7 +1498,10 @@ async function pollMuapi(rid, key, isVideo, baseUrl) {
       if (attempts > maxAttempts) { clearInterval(iv); reject(new Error("Timeout Muapi — tente mais tarde")); return; }
       try {
         const r = await fetch(`${baseUrl}/predictions/${rid}/result`, {
-          headers:key ? {"x-api-key":key} : {}
+          headers:{
+            ...(key ? {"x-api-key":key} : {}),
+            ...(getBridgeToken() ? {"x-akashi-token": getBridgeToken()} : {}),
+          }
         });
         if (!r.ok) {
           if (r.status >= 500) return;

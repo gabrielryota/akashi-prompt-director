@@ -4,7 +4,7 @@ function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin || "*",
     "Access-Control-Allow-Methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "content-type,x-api-key,authorization",
+    "Access-Control-Allow-Headers": "content-type,x-api-key,x-akashi-token,authorization",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
@@ -30,6 +30,12 @@ function authKey(request, env) {
   return request.headers.get("x-api-key") || env.MUAPI_API_KEY || "";
 }
 
+function bridgeToken(request, env) {
+  const header = request.headers.get("x-akashi-token") || "";
+  const auth = request.headers.get("authorization") || "";
+  return header || auth.replace(/^Bearer\s+/i, "") || env.BRIDGE_TOKEN || "";
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "*";
@@ -42,6 +48,17 @@ export default {
 
     if (!url.pathname.startsWith("/api/v1")) {
       return json({ error: "Not found" }, { status: 404, headers: corsHeaders(origin) });
+    }
+
+    const requiredToken = env.BRIDGE_TOKEN || "";
+    if (requiredToken) {
+      const providedToken = bridgeToken(request, env);
+      if (!providedToken || providedToken !== requiredToken) {
+        return json(
+          { error: "Unauthorized. Missing or invalid bridge token." },
+          { status: 401, headers: corsHeaders(origin) }
+        );
+      }
     }
 
     const key = authKey(request, env);
