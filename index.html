@@ -862,14 +862,14 @@ async function cp(tag) {
 const VIDEO_ENGINES = new Set(["Kling 3.0","Kling 2.1","Seedance 2.0","Veo 3.1","HappyHorse 1.0 ⚠","Runway Gen-4","Wan2.6 Video","Wan2.5 Video"]);
 const MUAPI_SLUG = {
   // VIDEO
-  "Kling 3.0":         "kling-v2.6-pro-t2v",
+  "Kling 3.0":         "kling-v3.0-pro-text-to-video",
   "Kling 2.1":         "kling-v2.1-master-t2v",
   "Seedance 2.0":      "seedance-v2.0-t2v",
   "Veo 3.1":           "veo3.1-text-to-video",
   "Wan2.6 Video":      "wan2.6-text-to-video",
   "Wan2.5 Video":      "wan2.5-text-to-video",
   // IMAGE
-  "GPT Image 2":       "gpt4o-text-to-image",
+  "GPT Image 2":       "gpt-image-2-text-to-image",
   "GPT Image 1.5":     "gpt-image-1.5",
   "GPT-4o Image":      "gpt4o-text-to-image",
   "Nano Banana Pro":   "nano-banana-pro",
@@ -890,6 +890,25 @@ const MUAPI_SLUG = {
   "Wan2.5 Image Edit": "wan2.5-text-to-image",
   "Wan2.6 Image Edit": "wan2.6-text-to-image",
 };
+
+function getMuapiBaseUrl() {
+  const host = window.location.hostname;
+  if (host.endsWith("github.io")) {
+    return "http://localhost:3000/api/v1";
+  }
+  return "https://api.muapi.ai/api/v1";
+}
+
+function explainMuapiNetworkError(error) {
+  const usingLocalProxy = getMuapiBaseUrl().startsWith("http://localhost");
+  if (usingLocalProxy && /Failed to fetch|NetworkError|Load failed/i.test(error.message || "")) {
+    return "Não consegui falar com o Open-Generative-AI local. Abra no PC: cd ~/Open-Generative-AI && npm run dev, mantenha http://localhost:3000 ativo, e tente de novo.";
+  }
+  if (/Failed to fetch|NetworkError|Load failed/i.test(error.message || "")) {
+    return "O navegador bloqueou a chamada direta para MuAPI. Use o app online com o Open-Generative-AI local rodando em http://localhost:3000.";
+  }
+  return error.message;
+}
 
 // ─── SHOW GEN CARD ─────────────────────────────────────────────────────────
 function showGenCard(engine, platform) {
@@ -928,7 +947,7 @@ async function sendToplatform() {
       throw new Error(`Plataforma "${platform}" não suportada ainda. Copie o prompt EN e cole na plataforma.`);
     }
   } catch(e) {
-    result.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--err);padding:12px;background:#1a0808;border:1px solid #3a1010;border-radius:4px">${e.message}</div>`;
+    result.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--err);padding:12px;background:#1a0808;border:1px solid #3a1010;border-radius:4px">${explainMuapiNetworkError(e)}</div>`;
   } finally {
     btn.disabled = false;
     btn.innerHTML = `▶ GERAR VIA ${(platform||"").toUpperCase()}`;
@@ -944,56 +963,78 @@ async function sendMuapi(engine, prompt, neg) {
   if (!slug) throw new Error(`Engine "${engine}" não mapeada para slug Muapi. Use o prompt EN manualmente.`);
 
   const isVideo = VIDEO_ENGINES.has(engine);
+  const baseUrl = getMuapiBaseUrl();
   const ar = document.getElementById("arSel").value;
   const payload = { prompt, aspect_ratio: ar };
   if (isVideo) {
-    payload.quality = document.getElementById("qualSel").value;
-    payload.duration = parseInt(document.getElementById("durSel").value);
+    const qual = document.getElementById("qualSel").value;
+    const dur = parseInt(document.getElementById("durSel").value);
+    if (!engine.startsWith("Kling")) payload.quality = qual;
+    if (engine === "Veo 3.1") {
+      payload.duration = 8;
+      payload.resolution = "1080p";
+    } else if (!Number.isNaN(dur)) {
+      payload.duration = dur;
+    }
   } else if (neg) {
     payload.negative_prompt = neg;
   }
 
-  const res = await fetch(`https://api.muapi.ai/api/v1/${slug}`, {
+  showStatus(baseUrl.includes("localhost")
+    ? "usando Open-Generative-AI local em localhost:3000…"
+    : "enviando direto para MuAPI…");
+
+  const res = await fetch(`${baseUrl}/${slug}`, {
     method:"POST",
     headers:{"Content-Type":"application/json","x-api-key":key},
     body:JSON.stringify(payload)
   });
   if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error("Muapi: "+(e.message||e.error||"HTTP "+res.status)); }
   const data = await res.json();
-  const rid = data.request_id;
+  const rid = data.request_id || data.id;
   if (!rid) throw new Error("Muapi: sem request_id — "+JSON.stringify(data));
 
   showStatus(`task: ${rid} — aguardando…`);
-  await pollMuapi(rid, key, isVideo);
+  await pollMuapi(rid, key, isVideo, baseUrl);
 }
 
-async function pollMuapi(rid, key, isVideo) {
-  const MAX = 90, INTERVAL = 6000;
+async function pollMuapi(rid, key, isVideo, baseUrl) {
+  const maxAttempts = isVideo ? 900 : 60;
+  const interval = 2000;
   let attempts = 0;
   return new Promise((resolve, reject) => {
     const iv = setInterval(async () => {
       attempts++;
-      if (attempts > MAX/6) { clearInterval(iv); reject(new Error("Timeout Muapi — tente mais tarde")); return; }
+      if (attempts > maxAttempts) { clearInterval(iv); reject(new Error("Timeout Muapi — tente mais tarde")); return; }
       try {
-        const r = await fetch(`https://api.muapi.ai/api/v1/predictions/${rid}/result`, {
+        const r = await fetch(`${baseUrl}/predictions/${rid}/result`, {
           headers:{"x-api-key":key}
         });
-        const d = await r.json();
-        const status = d.status;
-        showStatus(`status: ${status} (${attempts * 6}s)`);
-        if (status === "completed") {
+        if (!r.ok) {
+          if (r.status >= 500) return;
+          const errText = await r.text().catch(() => "");
           clearInterval(iv);
-          const outputs = d.outputs || d.output || [];
-          const url = Array.isArray(outputs) ? outputs[0] : outputs;
+          reject(new Error(`Muapi polling: HTTP ${r.status} ${errText.slice(0, 120)}`));
+          return;
+        }
+        const d = await r.json();
+        const status = (d.status || "").toLowerCase();
+        showStatus(`status: ${status || "processando"} (${attempts * 2}s)`);
+        if (["completed","succeeded","success"].includes(status)) {
+          clearInterval(iv);
+          const url = d.outputs?.[0] || d.url || d.output?.url || d.output;
           if (!url) { reject(new Error("Muapi: sem output URL")); return; }
           if (isVideo) showVideoResult(url); else showImageResult(url);
           resolve();
-        } else if (status === "failed") {
+        } else if (["failed","error"].includes(status)) {
           clearInterval(iv);
           reject(new Error("Muapi: geração falhou — "+JSON.stringify(d.error||"")));
         }
-      } catch(e) { /* silent poll error */ }
-    }, INTERVAL);
+      } catch(e) {
+        clearInterval(iv);
+        reject(new Error(explainMuapiNetworkError(e)));
+      }
+    }, interval);
   });
 }
 
