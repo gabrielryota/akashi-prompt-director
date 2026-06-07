@@ -860,6 +860,16 @@ async function cp(tag) {
 
 // ─── ENGINE → MUAPI SLUG ───────────────────────────────────────────────────
 const VIDEO_ENGINES = new Set(["Kling 3.0","Kling 2.1","Seedance 2.0","Veo 3.1","HappyHorse 1.0 ⚠","Runway Gen-4","Wan2.6 Video","Wan2.5 Video"]);
+const MUAPI_EDIT_IMAGE_FIELD = {
+  "Gpt Image 2 Edit": "images_list",
+  "GPT-4o Edit": "image_url",
+  "Nano Banana Pro Edit": "image_url",
+  "Nano Banana 2 Edit": "image_url",
+  "Seedream 5.0 Edit": "images_list",
+  "Qwen Image Edit": "image_url",
+  "Wan2.5 Image Edit": "image_url",
+  "Wan2.6 Image Edit": "image_url",
+};
 const MUAPI_SLUG = {
   // VIDEO
   "Kling 3.0":         "kling-v3.0-pro-text-to-video",
@@ -872,6 +882,8 @@ const MUAPI_SLUG = {
   "GPT Image 2":       "gpt-image-2-text-to-image",
   "GPT Image 1.5":     "gpt-image-1.5",
   "GPT-4o Image":      "gpt4o-text-to-image",
+  "Gpt Image 2 Edit":  "gpt-image-2-image-to-image",
+  "GPT-4o Edit":       "gpt4o-edit",
   "Nano Banana Pro":   "nano-banana-pro",
   "Nano Banana 2":     "nano-banana-2",
   "Imagen 4 Ultra":    "google-imagen4-ultra",
@@ -895,9 +907,6 @@ function getMuapiBaseUrl() {
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.")) {
     return `${window.location.origin}/api/v1`;
-  }
-  if (host.endsWith("github.io")) {
-    return "http://localhost:3000/api/v1";
   }
   return "https://api.muapi.ai/api/v1";
 }
@@ -966,6 +975,7 @@ async function sendMuapi(engine, prompt, neg) {
   if (!slug) throw new Error(`Engine "${engine}" não mapeada para slug Muapi. Use o prompt EN manualmente.`);
 
   const isVideo = VIDEO_ENGINES.has(engine);
+  const isEdit = !!MUAPI_EDIT_IMAGE_FIELD[engine];
   const baseUrl = getMuapiBaseUrl();
   const ar = document.getElementById("arSel").value;
   const payload = { prompt, aspect_ratio: ar };
@@ -979,8 +989,20 @@ async function sendMuapi(engine, prompt, neg) {
     } else if (!Number.isNaN(dur)) {
       payload.duration = dur;
     }
-  } else if (neg) {
+  } else if (neg && !isEdit) {
     payload.negative_prompt = neg;
+  }
+
+  if (isEdit) {
+    const activeRefs = refs.filter(Boolean);
+    if (!activeRefs.length) {
+      throw new Error("Adicione pelo menos 1 imagem de referência para este modo de edição.");
+    }
+    showStatus("enviando imagem(ns) de referência…");
+    const uploadedRefs = await uploadMuapiRefs(baseUrl, key, activeRefs);
+    const imageField = MUAPI_EDIT_IMAGE_FIELD[engine];
+    if (imageField === "images_list") payload.images_list = uploadedRefs;
+    else payload.image_url = uploadedRefs[0];
   }
 
   showStatus(baseUrl.includes("localhost")
@@ -999,6 +1021,36 @@ async function sendMuapi(engine, prompt, neg) {
 
   showStatus(`task: ${rid} — aguardando…`);
   await pollMuapi(rid, key, isVideo, baseUrl);
+}
+
+async function uploadMuapiRefs(baseUrl, key, activeRefs) {
+  const uploads = [];
+  for (let i = 0; i < activeRefs.length; i++) {
+    const ref = activeRefs[i];
+    const res = await fetch(`${baseUrl}/upload_file`, {
+      method: "POST",
+      headers: {"x-api-key": key},
+      body: (() => {
+        const fd = new FormData();
+        const mime = ref.mt || "image/jpeg";
+        const bin = atob(ref.b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+        const file = new File([bytes], `akashi-ref-${i + 1}.${mime.split("/")[1] || "jpg"}`, { type: mime });
+        fd.append("file", file);
+        return fd;
+      })()
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error("Muapi upload: " + (e.message || e.error || "HTTP " + res.status));
+    }
+    const data = await res.json();
+    const url = data.url || data.file_url || data.data?.url;
+    if (!url) throw new Error("Muapi upload: sem URL de imagem");
+    uploads.push(url);
+  }
+  return uploads;
 }
 
 async function pollMuapi(rid, key, isVideo, baseUrl) {
