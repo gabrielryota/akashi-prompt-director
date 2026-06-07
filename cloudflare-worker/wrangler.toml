@@ -1,0 +1,6 @@
+name = "akashi-muapi-bridge"
+main = "worker.js"
+compatibility_date = "2026-06-07"
+
+[vars]
+MUAPI_UPSTREAM = "https://api.muapi.ai"

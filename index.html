@@ -144,6 +144,7 @@ select option{background:var(--card)}
       <span id="keyBadge" style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t2)">0 configuradas</span>
     </div>
     <div id="keyBody" style="display:none;padding:16px;border-top:1px solid var(--border)">
+      <div id="prefFields"></div>
       <div id="keyFields"></div>
       <button onclick="saveKeys()"
         style="width:100%;padding:13px;background:var(--or);border:none;color:#000;font-family:var(--mono);font-size:11px;letter-spacing:0.14em;border-radius:4px;cursor:pointer;margin-top:4px;-webkit-appearance:none">
@@ -485,6 +486,7 @@ let refs = new Array(6).fill(null);
 let lastOut = null;
 let hist = [];
 let keys = { anthropic:"", openai:"", muapi:"", imagineart:"", google:"" };
+let prefs = { muapiProxy:"" };
 let makeItReal = false;
 
 const MAKE_IT_REAL_TEXT = "The final image should feel raw, effortless, and genuine—like an unposed everyday portrait, captured naturally in available light, without heavy editing, beauty filters, or excessive retouching.";
@@ -496,14 +498,20 @@ const KEY_DEFS = [
   { id:"imagineart",  label:"IMAGINEART",  ph:"vyro-..." },
   { id:"google",      label:"GOOGLE AI",   ph:"AIza..." },
 ];
+const PREF_DEFS = [
+  { id:"muapiProxy", label:"MUAPI BRIDGE URL", ph:"https://seu-worker.workers.dev/api/v1" },
+];
 
 // ─── INIT ──────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   buildGrid();
+  buildPrefFields();
   buildKeyFields();
   try {
     const k = localStorage.getItem("ak_keys");
     if (k) { keys = JSON.parse(k); applyKeysToFields(); }
+    const p = localStorage.getItem("ak_prefs");
+    if (p) { prefs = JSON.parse(p); applyPrefsToFields(); }
     const h = localStorage.getItem("ak_hist");
     if (h) hist = JSON.parse(h);
   } catch(_) {}
@@ -522,10 +530,32 @@ function buildKeyFields() {
   `).join("");
 }
 
+function buildPrefFields() {
+  const container = document.getElementById("prefFields");
+  if (!container) return;
+  container.innerHTML = PREF_DEFS.map(d => `
+    <div style="margin-bottom:12px">
+      <label>${d.label}</label>
+      <input type="text" id="pi_${d.id}" placeholder="${d.ph}" autocomplete="off" inputmode="url"
+        style="width:100%;background:var(--input);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:12px;padding:11px;border-radius:6px;outline:none;-webkit-appearance:none">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:5px;line-height:1.5">
+        Use no celular apontando para um Worker público. Se deixar vazio, o app usa o proxy local do PC quando estiver em localhost.
+      </div>
+    </div>
+  `).join("");
+}
+
 function applyKeysToFields() {
   KEY_DEFS.forEach(d => {
     const el = document.getElementById("ki_"+d.id);
     if (el) el.value = keys[d.id] || "";
+  });
+}
+
+function applyPrefsToFields() {
+  PREF_DEFS.forEach(d => {
+    const el = document.getElementById("pi_"+d.id);
+    if (el) el.value = prefs[d.id] || "";
   });
 }
 
@@ -537,10 +567,16 @@ function toggleKey() {
 }
 
 function saveKeys() {
+  PREF_DEFS.forEach(d => {
+    const el = document.getElementById("pi_"+d.id);
+    if (el) prefs[d.id] = el.value.trim();
+  });
   KEY_DEFS.forEach(d => {
     const el = document.getElementById("ki_"+d.id);
     if (el) keys[d.id] = el.value.trim();
   });
+  localStorage.setItem("ak_muapi_proxy", prefs.muapiProxy || "");
+  localStorage.setItem("ak_prefs", JSON.stringify(prefs));
   localStorage.setItem("ak_keys", JSON.stringify(keys));
   updateKeyBadge();
   document.getElementById("keyBody").style.display = "none";
@@ -904,11 +940,21 @@ const MUAPI_SLUG = {
 };
 
 function getMuapiBaseUrl() {
+  const proxy = normalizeMuapiBaseUrl(prefs.muapiProxy || localStorage.getItem("ak_muapi_proxy") || "");
+  if (proxy) return proxy;
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.")) {
     return `${window.location.origin}/api/v1`;
   }
   return "https://api.muapi.ai/api/v1";
+}
+
+function normalizeMuapiBaseUrl(value) {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  const cleaned = raw.replace(/\/+$/, "");
+  if (/\/api\/v1$/i.test(cleaned)) return cleaned;
+  return `${cleaned}/api/v1`;
 }
 
 function explainMuapiNetworkError(error) {
