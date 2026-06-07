@@ -106,6 +106,21 @@ select option{background:var(--card)}
 .h-empty{font-family:var(--mono);font-size:10px;color:var(--t2);text-align:center;padding:16px 0;letter-spacing:0.08em}
 .key-badge-no{font-family:var(--mono);font-size:9px;color:var(--t2);border:1px solid var(--border);padding:3px 8px;border-radius:2px}
 .key-badge-ok{font-family:var(--mono);font-size:9px;color:var(--ok);border:1px solid #1a3a1a;padding:3px 8px;border-radius:2px}
+
+/* VAULT */
+.vault-item{background:var(--input);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:8px}
+.vault-item:last-child{margin-bottom:0}
+.vault-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px}
+.vault-thumb{width:64px;min-width:64px;aspect-ratio:1;border-radius:5px;border:1px solid var(--border2);background:#0b0b0b;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vault-thumb img,.vault-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.vault-meta{flex:1;min-width:0}
+.vault-title{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--t0);line-height:1.45;word-break:break-word}
+.vault-sub{font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:4px;line-height:1.5}
+.vault-actions{display:flex;gap:8px;flex-wrap:wrap}
+.vault-btn{flex:1;min-width:84px;background:none;border:1px solid var(--border2);color:var(--t1);font-family:var(--mono);font-size:9px;letter-spacing:0.08em;padding:8px 10px;border-radius:4px;cursor:pointer;-webkit-appearance:none}
+.vault-btn.or{border-color:var(--or2);color:var(--or);background:var(--or3)}
+.vault-btn:active{transform:scale(0.99)}
+.vault-btn.danger{border-color:#3a1010;color:var(--err)}
 </style>
 </head>
 <body>
@@ -398,10 +413,22 @@ select option{background:var(--card)}
     </div>
   </div>
 
-  <!-- 04 HISTÓRICO -->
+  <!-- 04 VAULT -->
   <div class="card">
     <div class="card-h">
       <div class="card-num">04</div>
+      <div class="card-title">VAULT</div>
+      <span id="vaultCount" style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--t2)">0 itens</span>
+    </div>
+    <div class="card-body" id="vaultBody">
+      <div class="h-empty">nenhuma mídia gerada ainda</div>
+    </div>
+  </div>
+
+  <!-- 05 HISTÓRICO -->
+  <div class="card">
+    <div class="card-h">
+      <div class="card-num">05</div>
       <div class="card-title">HISTÓRICO</div>
     </div>
     <div class="card-body" id="histBody">
@@ -715,6 +742,9 @@ function syncModelSelectors(source) {
 let refs = new Array(6).fill(null);
 let lastOut = null;
 let hist = [];
+let vaultItems = [];
+let vaultDbPromise = null;
+let vaultPreviewUrls = [];
 let keys = { anthropic:"", openai:"", muapi:"", imagineart:"", google:"" };
 let prefs = { muapiProxy:"", bridgeToken:"" };
 let makeItReal = false;
@@ -748,6 +778,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch(_) {}
   updateKeyBadge();
   syncModelSelectors("init");
+  await loadVaultItems();
+  renderVault();
   renderHist();
 });
 
@@ -839,6 +871,235 @@ function toggleReal() {
 function applyMakeItReal(text) {
   if (!makeItReal || !text) return text;
   return text.includes(MAKE_IT_REAL_TEXT) ? text : `${text}\n\n${MAKE_IT_REAL_TEXT}`;
+}
+
+// ─── VAULT ────────────────────────────────────────────────────────────────
+const VAULT_DB_NAME = "akashi_vault_db";
+const VAULT_DB_STORE = "vault_items";
+
+function openVaultDb() {
+  if (!("indexedDB" in window)) return Promise.resolve(null);
+  if (vaultDbPromise) return vaultDbPromise;
+  vaultDbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(VAULT_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(VAULT_DB_STORE)) {
+        const store = db.createObjectStore(VAULT_DB_STORE, { keyPath: "id", autoIncrement: true });
+        store.createIndex("ts", "ts", { unique: false });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error("IndexedDB open failed"));
+  });
+  return vaultDbPromise;
+}
+
+function idbAll(db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VAULT_DB_STORE, "readonly");
+    const req = tx.objectStore(VAULT_DB_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error || new Error("IndexedDB getAll failed"));
+  });
+}
+
+function idbAdd(db, item) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VAULT_DB_STORE, "readwrite");
+    const req = tx.objectStore(VAULT_DB_STORE).add(item);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error("IndexedDB add failed"));
+  });
+}
+
+function idbDelete(db, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VAULT_DB_STORE, "readwrite");
+    tx.objectStore(VAULT_DB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("IndexedDB delete failed"));
+  });
+}
+
+async function loadVaultItems() {
+  try {
+    const db = await openVaultDb();
+    if (!db) { vaultItems = []; return; }
+    vaultItems = await idbAll(db);
+    vaultItems.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  } catch (e) {
+    console.warn("vault load failed", e);
+    vaultItems = [];
+  }
+}
+
+function revokeVaultPreviews() {
+  for (const url of vaultPreviewUrls) {
+    try { URL.revokeObjectURL(url); } catch (_) {}
+  }
+  vaultPreviewUrls = [];
+}
+
+function vaultCountLabel() {
+  const n = vaultItems.length;
+  return `${n} item${n === 1 ? "" : "s"}`;
+}
+
+function vaultTsLabel(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) + " " + d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+}
+
+function escapeHtml(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function vaultPreviewSrc(item) {
+  if (item.blob instanceof Blob) {
+    const url = URL.createObjectURL(item.blob);
+    vaultPreviewUrls.push(url);
+    return url;
+  }
+  return item.url || "";
+}
+
+function renderVault() {
+  const body = document.getElementById("vaultBody");
+  const counter = document.getElementById("vaultCount");
+  if (!body || !counter) return;
+  revokeVaultPreviews();
+  counter.textContent = vaultCountLabel();
+  if (!vaultItems.length) {
+    body.innerHTML = '<div class="h-empty">nenhuma mídia gerada ainda</div>';
+    return;
+  }
+  body.innerHTML = vaultItems.map(item => {
+    const src = vaultPreviewSrc(item);
+    const type = item.kind === "video" ? "Vídeo" : "Imagem";
+    const info = [type, item.engine, item.platform].filter(Boolean).join(" · ");
+    const title = item.title || item.label || "Arquivo gerado";
+    return `
+      <div class="vault-item">
+        <div class="vault-head">
+          <div class="vault-thumb">${item.kind === "video" ? `<video muted playsinline preload="metadata" src="${escapeHtml(src)}"></video>` : `<img src="${escapeHtml(src)}" alt="">`}</div>
+          <div class="vault-meta">
+            <div class="vault-title">${escapeHtml(title)}</div>
+            <div class="vault-sub">${escapeHtml(info || "sem metadados")}${item.ts ? " · " + escapeHtml(vaultTsLabel(item.ts)) : ""}</div>
+          </div>
+        </div>
+        <div class="vault-actions">
+          <button class="vault-btn or" onclick="openVaultItem(${item.id})">abrir</button>
+          <button class="vault-btn" onclick="downloadVaultItem(${item.id})">baixar</button>
+          <button class="vault-btn danger" onclick="removeVaultItem(${item.id})">apagar</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function captureVaultSource(src, kind, mime) {
+  if (!src) return null;
+  if (src instanceof Blob) {
+    return { blob: src, mime: mime || src.type || (kind === "video" ? "video/mp4" : "image/png") };
+  }
+  if (typeof src !== "string") return null;
+  if (src.startsWith("data:")) {
+    try {
+      const blob = await (await fetch(src)).blob();
+      return { blob, mime: mime || blob.type || src.slice(5, src.indexOf(";")) || (kind === "video" ? "video/mp4" : "image/png") };
+    } catch (e) {
+      console.warn("vault data url capture failed", e);
+      return { url: src, mime: mime || (kind === "video" ? "video/mp4" : "image/png") };
+    }
+  }
+  try {
+    const res = await fetch(src, { mode:"cors", cache:"no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    return { blob, mime: mime || blob.type || (kind === "video" ? "video/mp4" : "image/png") };
+  } catch (e) {
+    console.warn("vault remote capture failed", e);
+    return { url: src, mime: mime || (kind === "video" ? "video/mp4" : "image/png") };
+  }
+}
+
+async function saveVaultItem(item) {
+  try {
+    const db = await openVaultDb();
+    if (!db) return null;
+    const saved = { ...item, ts: item.ts || Date.now() };
+    const id = await idbAdd(db, saved);
+    saved.id = id;
+    vaultItems.unshift(saved);
+    renderVault();
+    return saved;
+  } catch (e) {
+    console.warn("vault save failed", e);
+    return null;
+  }
+}
+
+async function persistVaultOutput(src, kind, meta = {}) {
+  const captured = await captureVaultSource(src, kind, meta.mime);
+  if (!captured) return null;
+  return saveVaultItem({
+    kind,
+    ...captured,
+    engine: meta.engine || "",
+    platform: meta.platform || "",
+    title: meta.title || "",
+    label: meta.label || "",
+  });
+}
+
+async function removeVaultItem(id) {
+  const item = vaultItems.find(v => v.id === id);
+  if (!item) return;
+  if (!confirm("Apagar este item do vault?")) return;
+  try {
+    const db = await openVaultDb();
+    if (!db) return;
+    await idbDelete(db, id);
+    vaultItems = vaultItems.filter(v => v.id !== id);
+    renderVault();
+  } catch (e) {
+    console.warn("vault delete failed", e);
+  }
+}
+
+async function downloadVaultItem(id) {
+  const item = vaultItems.find(v => v.id === id);
+  if (!item) return;
+  let url = item.url || "";
+  let revoke = false;
+  if (!url && item.blob instanceof Blob) {
+    url = URL.createObjectURL(item.blob);
+    revoke = true;
+  }
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (item.kind === "video" ? "akashi-video-" : "akashi-image-") + (item.id || Date.now()) + (item.kind === "video" ? ".mp4" : ".png");
+  a.click();
+  if (revoke) setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 1000);
+}
+
+function openVaultItem(id) {
+  const item = vaultItems.find(v => v.id === id);
+  if (!item) return;
+  if (item.kind === "video") {
+    showVideoResult(item.blob instanceof Blob ? item.blob : (item.url || ""), { persist:false, title:item.title || item.label || "" });
+  } else {
+    showImageResult(item.blob instanceof Blob ? item.blob : (item.url || ""), false, { persist:false, title:item.title || item.label || "" });
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // Legacy compat (anthropic key used for prompt generation)
@@ -1667,10 +1928,10 @@ async function sendImagineArt(engine, prompt, neg) {
   showImageBlobResult(blob);
 }
 
-function showImageBlobResult(blob) {
+function showImageBlobResult(blob, opts = {}) {
   const r = document.getElementById("genResult");
   r.innerHTML = "";
-  const url = URL.createObjectURL(blob);
+  const url = makeResultUrl(blob);
   const img = document.createElement("img");
   img.src = url;
   img.style.cssText = "width:100%;border-radius:6px;border:1px solid var(--border2);display:block";
@@ -1685,6 +1946,7 @@ function showImageBlobResult(blob) {
     a.click();
   };
   r.appendChild(dl);
+  queueVaultSave(blob, "image", opts);
 }
 
 async function pollImagineArtVideo(rid, key) {
@@ -1793,39 +2055,73 @@ async function sendGemini(engine, prompt, neg) {
 }
 
 // ─── RESULT DISPLAY ────────────────────────────────────────────────────────
+let activeResultUrl = "";
+
+function clearActiveResultUrl() {
+  if (!activeResultUrl) return;
+  try { URL.revokeObjectURL(activeResultUrl); } catch (_) {}
+  activeResultUrl = "";
+}
+
+function makeResultUrl(src) {
+  clearActiveResultUrl();
+  if (src instanceof Blob) {
+    activeResultUrl = URL.createObjectURL(src);
+    return activeResultUrl;
+  }
+  return src;
+}
+
+function queueVaultSave(src, kind, opts = {}) {
+  if (opts.persist === false) return;
+  const meta = {
+    engine: opts.engine || document.getElementById("engineSel")?.value || "",
+    platform: opts.platform || document.getElementById("platformSel")?.value || "",
+    title: opts.title || "",
+    label: opts.label || "",
+    mime: opts.mime || ""
+  };
+  persistVaultOutput(src, kind, meta);
+}
+
 function showStatus(msg) {
+  clearActiveResultUrl();
   const r = document.getElementById("genResult");
   r.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--t2)">${msg}</div>`;
 }
 
-function showImageResult(src, isBase64) {
+function showImageResult(src, isBase64, opts = {}) {
   const r = document.getElementById("genResult");
   r.innerHTML = "";
+  const mediaSrc = makeResultUrl(src);
   const img = document.createElement("img");
-  img.src = src;
+  img.src = mediaSrc;
   img.style.cssText = "width:100%;border-radius:6px;border:1px solid var(--border2);display:block";
   r.appendChild(img);
   if (isBase64) {
     const dl = document.createElement("button");
     dl.textContent = "↓ baixar";
     dl.style.cssText = "width:100%;margin-top:8px;padding:11px;background:none;border:1px solid var(--border2);color:var(--t1);font-family:var(--mono);font-size:10px;border-radius:4px;cursor:pointer;-webkit-appearance:none";
-    dl.onclick = () => { const a=document.createElement("a"); a.href=src; a.download="akashi-"+Date.now()+".png"; a.click(); };
+    dl.onclick = () => { const a=document.createElement("a"); a.href=mediaSrc; a.download="akashi-"+Date.now()+".png"; a.click(); };
     r.appendChild(dl);
   }
+  queueVaultSave(src, "image", opts);
 }
 
-function showVideoResult(url) {
+function showVideoResult(url, opts = {}) {
   const r = document.getElementById("genResult");
   r.innerHTML = "";
+  const mediaSrc = makeResultUrl(url);
   const v = document.createElement("video");
-  v.src = url; v.controls = true; v.autoplay = true; v.loop = true;
+  v.src = mediaSrc; v.controls = true; v.autoplay = true; v.loop = true;
   v.style.cssText = "width:100%;border-radius:6px;border:1px solid var(--border2);display:block";
   r.appendChild(v);
   const a = document.createElement("a");
-  a.href = url; a.target = "_blank";
+  a.href = mediaSrc; a.target = "_blank";
   a.textContent = "↗ abrir vídeo";
   a.style.cssText = "display:block;text-align:center;margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--or);text-decoration:none";
   r.appendChild(a);
+  queueVaultSave(url, "video", opts);
 }
 
 // ─── HISTORY ───────────────────────────────────────────────────────────────
