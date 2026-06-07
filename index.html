@@ -402,7 +402,7 @@ select option{background:var(--card)}
 const GATE_HASH = btoa("akashi2026"); // senha padrão: akashi2026 — TROQUE ISSO
 
 function initGate() {
-  const ok = localStorage.getItem("ak_gate") === GATE_HASH;
+  const ok = sessionStorage.getItem("ak_gate") === GATE_HASH;
   document.getElementById("gateScreen").style.display = ok ? "none" : "flex";
   document.getElementById("appScreen").style.display  = ok ? "block" : "none";
   if (!ok) setTimeout(() => document.getElementById("gateInput").focus(), 100);
@@ -411,7 +411,7 @@ function initGate() {
 function checkGate() {
   const val = document.getElementById("gateInput").value;
   if (btoa(val) === GATE_HASH) {
-    localStorage.setItem("ak_gate", GATE_HASH);
+    sessionStorage.setItem("ak_gate", GATE_HASH);
     document.getElementById("gateScreen").style.display = "none";
     document.getElementById("appScreen").style.display  = "block";
   } else {
@@ -705,9 +705,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   buildPrefFields();
   buildKeyFields();
   try {
-    const k = localStorage.getItem("ak_keys");
+    const k = sessionStorage.getItem("ak_keys") || localStorage.getItem("ak_keys");
     if (k) { keys = JSON.parse(k); applyKeysToFields(); }
-    const p = localStorage.getItem("ak_prefs");
+    const p = sessionStorage.getItem("ak_prefs") || localStorage.getItem("ak_prefs");
     if (p) { prefs = JSON.parse(p); applyPrefsToFields(); }
     const h = localStorage.getItem("ak_hist");
     if (h) hist = JSON.parse(h);
@@ -777,9 +777,12 @@ function saveKeys() {
     const el = document.getElementById("ki_"+d.id);
     if (el) keys[d.id] = el.value.trim();
   });
-  localStorage.setItem("ak_muapi_proxy", prefs.muapiProxy || "");
-  localStorage.setItem("ak_prefs", JSON.stringify(prefs));
-  localStorage.setItem("ak_keys", JSON.stringify(keys));
+  sessionStorage.setItem("ak_muapi_proxy", prefs.muapiProxy || "");
+  sessionStorage.setItem("ak_prefs", JSON.stringify(prefs));
+  sessionStorage.setItem("ak_keys", JSON.stringify(keys));
+  localStorage.removeItem("ak_muapi_proxy");
+  localStorage.removeItem("ak_prefs");
+  localStorage.removeItem("ak_keys");
   updateKeyBadge();
   document.getElementById("keyBody").style.display = "none";
 }
@@ -1136,7 +1139,7 @@ const MUAPI_SLUG = {
 };
 
 function getMuapiBaseUrl() {
-  const proxy = normalizeMuapiBaseUrl(prefs.muapiProxy || localStorage.getItem("ak_muapi_proxy") || "");
+  const proxy = normalizeMuapiBaseUrl(prefs.muapiProxy || sessionStorage.getItem("ak_muapi_proxy") || localStorage.getItem("ak_muapi_proxy") || "");
   if (proxy) return proxy;
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.includes("ngrok")) {
@@ -1153,7 +1156,7 @@ function normalizeBridgeRoot(value) {
 }
 
 function getBridgeRoot() {
-  const stored = normalizeBridgeRoot(prefs.muapiProxy || localStorage.getItem("ak_muapi_proxy") || "");
+  const stored = normalizeBridgeRoot(prefs.muapiProxy || sessionStorage.getItem("ak_muapi_proxy") || localStorage.getItem("ak_muapi_proxy") || "");
   if (stored) return stored;
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.includes("ngrok")) {
