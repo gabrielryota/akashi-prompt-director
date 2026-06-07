@@ -499,7 +499,7 @@ const KEY_DEFS = [
   { id:"google",      label:"GOOGLE AI",   ph:"AIza..." },
 ];
 const PREF_DEFS = [
-  { id:"muapiProxy", label:"MUAPI BRIDGE URL", ph:"https://seu-worker.workers.dev/api/v1" },
+  { id:"muapiProxy", label:"BRIDGE URL", ph:"https://seu-projeto.vercel.app" },
 ];
 
 // ─── INIT ──────────────────────────────────────────────────────────────────
@@ -949,12 +949,27 @@ function getMuapiBaseUrl() {
   return "https://api.muapi.ai/api/v1";
 }
 
-function normalizeMuapiBaseUrl(value) {
+function normalizeBridgeRoot(value) {
   const raw = (value || "").trim();
   if (!raw) return "";
   const cleaned = raw.replace(/\/+$/, "");
-  if (/\/api\/v1$/i.test(cleaned)) return cleaned;
-  return `${cleaned}/api/v1`;
+  return cleaned.replace(/\/api\/v1$/i, "").replace(/\/api\/openai$/i, "");
+}
+
+function getBridgeRoot() {
+  const stored = normalizeBridgeRoot(prefs.muapiProxy || localStorage.getItem("ak_muapi_proxy") || "");
+  if (stored) return stored;
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.includes("ngrok")) {
+    return window.location.origin;
+  }
+  return "";
+}
+
+function normalizeMuapiBaseUrl(value) {
+  const root = normalizeBridgeRoot(value);
+  if (!root) return "";
+  return `${root}/api/v1`;
 }
 
 function explainMuapiNetworkError(error) {
@@ -1150,10 +1165,15 @@ async function pollMuapi(rid, key, isVideo, baseUrl) {
 async function sendOpenAI(prompt) {
   const key = getKey("openai");
   if (!key) throw new Error("Key OpenAI não configurada em ⚙");
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
+  const bridgeRoot = getBridgeRoot();
+  const url = bridgeRoot ? `${bridgeRoot}/api/openai/images/generations` : "https://api.openai.com/v1/images/generations";
+  const res = await fetch(url, {
     method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
-    body:JSON.stringify({ model:"gpt-image-1", prompt, n:1, size:"1024x1024" })
+    headers:{
+      "Content-Type":"application/json",
+      ...(bridgeRoot ? {"x-api-key":key} : {"Authorization":"Bearer "+key}),
+    },
+    body:JSON.stringify({ model:"gpt-image-1.5", prompt, n:1, size:"1024x1024", response_format:"b64_json" })
   });
   if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error("OpenAI: "+(e.error?.message||"HTTP "+res.status)); }
   const data = await res.json();
