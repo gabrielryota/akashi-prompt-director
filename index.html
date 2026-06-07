@@ -569,8 +569,9 @@ const MODEL_META = {
   "GPT-4o Image": { kind:"image", refMode:"optional-multi", maxRefs:16, aspectByPlatform:{ "Muapi.ai":["1:1","2:3","3:2"], "OpenAI API":["1:1","2:3","3:2"], "ImagineArt":["1:1","2:3","3:2"] } },
   "Gpt Image 2 Edit": { kind:"image", refMode:"multi", maxRefs:16, aspectByPlatform:{ "Muapi.ai":["auto","1:1","16:9","9:16","4:3","3:4"], "OpenAI API":["1:1","2:3","3:2"], "ImagineArt":["auto","1:1","16:9","9:16","4:3","3:4"] } },
   "GPT-4o Edit": { kind:"image", refMode:"single", maxRefs:1, aspectByPlatform:{ "Muapi.ai":["1:1","2:3","3:2"], "OpenAI API":["1:1","2:3","3:2"], "ImagineArt":["1:1","2:3","3:2"] } },
-  "Nano Banana Pro": { kind:"image", refMode:"optional-multi", maxRefs:14, aspect:["1:1","3:4","4:3","9:16","16:9","3:2","2:3","5:4","4:5","21:9"], resolutions:["1k","2k","4k"] },
-  "Nano Banana 2": { kind:"image", refMode:"optional-multi", maxRefs:14, aspect:["1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9","auto"], resolutions:["1k","2k","4k"] },
+  "Nano Banana": { kind:"image", refMode:"optional-multi", maxRefs:14, preferredRefsMax:3, aspect:["1:1","3:4","4:3","9:16","16:9","3:2","2:3","5:4","4:5","21:9"], resolutions:["1k","2k","4k"] },
+  "Nano Banana Pro": { kind:"image", refMode:"optional-multi", maxRefs:14, preferredRefsMax:3, aspect:["1:1","3:4","4:3","9:16","16:9","3:2","2:3","5:4","4:5","21:9"], resolutions:["1k","2k","4k"] },
+  "Nano Banana 2": { kind:"image", refMode:"optional-multi", maxRefs:14, preferredRefsMax:3, aspect:["1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9","auto"], resolutions:["1k","2k","4k"] },
   "Nano Banana Pro Edit": { kind:"image", refMode:"multi", maxRefs:8, aspect:["1:1","3:4","4:3","9:16","16:9","3:2","2:3","5:4","4:5","21:9"], resolutions:["1k","2k","4k"] },
   "Nano Banana 2 Edit": { kind:"image", refMode:"multi", maxRefs:14, aspect:["1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9","auto"], resolutions:["1k","2k","4k"] },
   "Nano Banana Effects": { kind:"tool", refMode:"single", maxRefs:1 },
@@ -1156,6 +1157,7 @@ function buildGrid() {
 function getRefCompatibility(engine, platform) {
   const activeRefs = refs.filter(Boolean);
   const refRule = getRefRule(engine);
+  const meta = getEngineMeta(engine);
   const count = activeRefs.length;
   if (!engine || !platform) {
     return { ok:true, level:"", msg: count ? `${count} ref(s) carregada(s). Selecione engine e plataforma para validar compatibilidade.` : "" };
@@ -1169,6 +1171,9 @@ function getRefCompatibility(engine, platform) {
   }
   if (refRule.maxRefs && count > refRule.maxRefs) {
     return { ok:false, level:"err", msg:`"${engine}" aceita no máximo ${refRule.maxRefs} imagens de referência. Você tem ${count}.` };
+  }
+  if (meta.preferredRefsMax && count > meta.preferredRefsMax) {
+    return { ok:true, level:"warn", msg:`"${engine}" aceita refs, mas a Google recomenda até ${meta.preferredRefsMax} imagem(ns) para melhor resultado. Você tem ${count}.` };
   }
   if (count === 0 && ["single","multi","required-single","required-multi"].includes(refRule.mode)) {
     return { ok:false, level:"warn", msg:`"${engine}" pede imagem(ns) de referência antes de enviar.` };
