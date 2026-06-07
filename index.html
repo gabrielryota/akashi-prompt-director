@@ -984,7 +984,9 @@ async function sendToplatform() {
   const platform = document.getElementById("platSel").value;
   const en       = lastOut?.en;
   const neg      = lastOut?.neg;
-  if (!en) { return; }
+  if (!engine) return showGenError("Selecione uma engine antes de enviar.");
+  if (!platform) return showGenError("Selecione uma plataforma antes de enviar.");
+  if (!en) return showGenError("Gere o prompt primeiro. O botão MuAPI só envia o EN já gerado.");
 
   const btn = document.getElementById("sendBtn");
   btn.disabled = true;
@@ -1010,6 +1012,11 @@ async function sendToplatform() {
     btn.disabled = false;
     btn.innerHTML = `▶ GERAR VIA ${(platform||"").toUpperCase()}`;
   }
+}
+
+function showGenError(msg) {
+  const result = document.getElementById("genResult");
+  result.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--err);padding:12px;background:#1a0808;border:1px solid #3a1010;border-radius:4px">${msg}</div>`;
 }
 
 // ─── MUAPI ────────────────────────────────────────────────────────────────
