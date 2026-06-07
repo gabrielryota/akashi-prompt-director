@@ -893,6 +893,9 @@ const MUAPI_SLUG = {
 
 function getMuapiBaseUrl() {
   const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.")) {
+    return `${window.location.origin}/api/v1`;
+  }
   if (host.endsWith("github.io")) {
     return "http://localhost:3000/api/v1";
   }
@@ -902,7 +905,7 @@ function getMuapiBaseUrl() {
 function explainMuapiNetworkError(error) {
   const usingLocalProxy = getMuapiBaseUrl().startsWith("http://localhost");
   if (usingLocalProxy && /Failed to fetch|NetworkError|Load failed/i.test(error.message || "")) {
-    return "Não consegui falar com o Open-Generative-AI local. Abra no PC: cd ~/Open-Generative-AI && npm run dev, mantenha http://localhost:3000 ativo, e tente de novo.";
+    return "Não consegui falar com o Open-Generative-AI local. Abra no PC: cd ~/Open-Generative-AI && npm run dev. Se o Chrome bloquear acesso à rede local, use a versão local: http://localhost:3000/akashi/index.html";
   }
   if (/Failed to fetch|NetworkError|Load failed/i.test(error.message || "")) {
     return "O navegador bloqueou a chamada direta para MuAPI. Use o app online com o Open-Generative-AI local rodando em http://localhost:3000.";
