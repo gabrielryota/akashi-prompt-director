@@ -161,12 +161,6 @@ select option{background:var(--card)}
     </div>
     <div class="card-body">
       <div class="field">
-        <label>Plataforma</label>
-        <select id="platSel" onchange="onPlatform()"><option value="">— selecione a plataforma —</option></select>
-        <div class="platform-note" id="platNote"></div>
-      </div>
-
-      <div class="field">
         <label>Engine</label>
         <select id="engineSel" onchange="onEngine()">
           <option value="">— selecione a engine —</option>
@@ -241,6 +235,12 @@ select option{background:var(--card)}
             <option>AI Product Shot</option>
           </optgroup>
         </select>
+      </div>
+
+      <div class="field">
+        <label>Plataforma</label>
+        <select id="platSel" onchange="onPlatform()"><option value="">— selecione a plataforma —</option></select>
+        <div class="platform-note" id="platNote"></div>
       </div>
 
       <div class="divider"></div>
@@ -424,12 +424,12 @@ window.addEventListener("DOMContentLoaded", initGate);
 
 // ─── ENGINE → PLATFORM MAP ─────────────────────────────────────────────────
 const EP = {
-  "Kling 3.0":              {p:["Muapi.ai","Kling (nativo)"],            n:"Vetor único de câmera · Anti-alucinação arquitetônico"},
-  "Kling 2.1":              {p:["Muapi.ai","Kling (nativo)"],            n:""},
+  "Kling 3.0":              {p:["Muapi.ai","ImagineArt"],                 n:"Vetor único de câmera · Anti-alucinação arquitetônico"},
+  "Kling 2.1":              {p:["Muapi.ai","ImagineArt"],                 n:""},
   "Seedance 2.0":           {p:["Muapi.ai"],                             n:"Narrativa fluida · Sem colchetes"},
   "Veo 3.1":                {p:["Muapi.ai","Google AI Studio"],          n:"Google DeepMind · Áudio nativo"},
   "HappyHorse 1.0 ⚠":      {p:["Muapi.ai"],                             n:"⚠ Beta regional — disponibilidade limitada"},
-  "Runway Gen-4":           {p:["Runway"],                               n:"Tracking lateral · Separação câmera/sujeito"},
+  "Runway Gen-4":           {p:["Muapi.ai","ImagineArt"],                 n:"Tracking lateral · Separação câmera/sujeito"},
   "Wan2.6 Video":           {p:["Muapi.ai"],                             n:""},
   "GPT Image 2":            {p:["Muapi.ai","OpenAI API","ImagineArt"],   n:"Melhor text rendering · Fotorrealismo"},
   "GPT Image 1.5":          {p:["Muapi.ai","OpenAI API"],                n:""},
@@ -480,7 +480,7 @@ const EP = {
   "AI Product Shot":        {p:["Muapi.ai"],                             n:"Produto · Descrever cena"},
 };
 
-const PLATFORM_ORDER = ["Muapi.ai","OpenAI API","ImagineArt","Gemini","Google AI Studio (pré-pago)","Kling (nativo)","Runway"];
+const PLATFORM_ORDER = ["Muapi.ai","OpenAI API","ImagineArt","Gemini","Google AI Studio (pré-pago)"];
 const ENGINE_GROUPS = [
   { label:"Vídeo", items:["Kling 3.0","Kling 2.1","Seedance 2.0","Veo 3.1","HappyHorse 1.0 ⚠","Runway Gen-4","Wan2.6 Video"] },
   { label:"Imagem — OpenAI", items:["GPT Image 2","GPT Image 1.5","GPT-4o Image","Gpt Image 2 Edit","GPT-4o Edit"] },
