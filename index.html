@@ -402,16 +402,15 @@ select option{background:var(--card)}
 const GATE_HASH = btoa("Aka14@Ryt23");
 
 function initGate() {
-  const ok = sessionStorage.getItem("ak_gate") === GATE_HASH;
-  document.getElementById("gateScreen").style.display = ok ? "none" : "flex";
-  document.getElementById("appScreen").style.display  = ok ? "block" : "none";
-  if (!ok) setTimeout(() => document.getElementById("gateInput").focus(), 100);
+  sessionStorage.removeItem("ak_gate");
+  document.getElementById("gateScreen").style.display = "flex";
+  document.getElementById("appScreen").style.display  = "none";
+  setTimeout(() => document.getElementById("gateInput").focus(), 100);
 }
 
 function checkGate() {
   const val = document.getElementById("gateInput").value;
   if (btoa(val) === GATE_HASH) {
-    sessionStorage.setItem("ak_gate", GATE_HASH);
     document.getElementById("gateScreen").style.display = "none";
     document.getElementById("appScreen").style.display  = "block";
   } else {
