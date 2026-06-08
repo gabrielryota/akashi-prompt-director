@@ -24,6 +24,10 @@ body{background:var(--bg);color:var(--t0);font-family:var(--sans);font-size:15px
 .logo-sub{font-family:var(--mono);font-size:10px;color:var(--t2);letter-spacing:0.16em}
 .tagline{font-family:var(--mono);font-size:11px;color:var(--t2);letter-spacing:0.04em}
 
+.mode-tabs{display:flex;align-items:center;gap:8px;padding:0 20px;margin-bottom:16px}
+.mode-tab{background:var(--input);border:1px solid var(--border2);color:var(--t1);font-family:var(--mono);font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:12px;cursor:pointer;transition:all 0.2s;-webkit-appearance:none}
+.mode-tab.active{background:var(--or3);border-color:var(--or2);color:var(--or)}
+
 .wrap{padding:0 16px;display:flex;flex-direction:column;gap:12px}
 
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
@@ -87,7 +91,10 @@ select option{background:var(--card)}
 .btn-copy{background:none;border:1px solid var(--border2);color:var(--t1);font-family:var(--mono);font-size:9px;letter-spacing:0.08em;padding:6px 12px;border-radius:3px;cursor:pointer;-webkit-appearance:none}
 .btn-copy.ok{border-color:#1e4a1e;color:var(--ok)}
 
-.out-box{background:var(--input);border:1px solid var(--border2);border-radius:6px;padding:14px;font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--t0);white-space:pre-wrap;word-break:break-word}
+.out-box{background:var(--input);border:1px solid var(--border2);border-radius:6px;padding:14px;font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--t0);white-space:pre-wrap;word-break:break-word;perspective:1000px;will-change:transform;transition:transform 0.4s ease,box-shadow 0.4s ease}
+.out-box:not(.empty):hover{transform:translateY(-4px) rotateX(2deg);box-shadow:0 12px 24px -8px rgba(0,0,0,0.5),0 4px 12px -4px rgba(0,0,0,0.3)}
+#genResult{perspective:1000px;will-change:transform;transition:transform 0.4s ease,box-shadow 0.4s ease;border-radius:6px}
+#genResult:hover{transform:translateY(-4px) rotateX(2deg);box-shadow:0 12px 24px -8px rgba(0,0,0,0.5),0 4px 12px -4px rgba(0,0,0,0.3)}
 .out-box.empty{display:flex;align-items:center;justify-content:center;min-height:80px;color:var(--t2);font-size:11px;letter-spacing:0.08em}
 .out-box.err{border-color:#3a1010;color:var(--err)}
 
@@ -149,6 +156,11 @@ select option{background:var(--card)}
     <div class="logo-sub">PROMPT DIRECTOR V2</div>
   </div>
   <div class="tagline">// prompt não descreve — prompt dirige</div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabPro" onclick="toggleMode(false)">PRO</button>
+    <button class="mode-tab" id="tabFree" onclick="toggleMode(true)">FREE</button>
+  </div>
 
 <div class="wrap">
 
@@ -618,6 +630,27 @@ const DEFAULT_ASPECTS = ["1:1","16:9","9:16","4:3","3:4","21:9"];
 const OPENAI_ASPECTS = ["1:1","2:3","3:2"];
 
 let syncingSelectors = false;
+let isFreeMode = false;
+
+function toggleMode(isFree) {
+  isFreeMode = isFree;
+
+  if (isFreeMode) {
+    document.documentElement.style.setProperty('--or', '#0ae8e8');
+    document.documentElement.style.setProperty('--or2', '#0a9bb8');
+    document.documentElement.style.setProperty('--or3', '#052a2a');
+    document.getElementById("tabPro").classList.remove("active");
+    document.getElementById("tabFree").classList.add("active");
+  } else {
+    document.documentElement.style.setProperty('--or', '#e8920a');
+    document.documentElement.style.setProperty('--or2', '#b8720a');
+    document.documentElement.style.setProperty('--or3', '#2a1e05');
+    document.getElementById("tabPro").classList.add("active");
+    document.getElementById("tabFree").classList.remove("active");
+  }
+
+  syncModelSelectors('init');
+}
 
 function uniq(list) {
   return [...new Set((list || []).filter(Boolean))];
@@ -651,13 +684,15 @@ function getVideoValues(engine, field) {
   return Array.isArray(meta[field]) ? meta[field].slice() : [];
 }
 
+const FREE_MODELS = ["Imagine", "Chatgpt", "AI Background Remover", "AI Background Changer", "AI Image Extension", "AI Image Upscaler", "Topaz Image Upscale", "AI Object Eraser", "AI Face Swap", "AI Dress Change", "AI Clothes Changer", "AI Skin Enhancer", "AI Color Photo", "AI Ghibli Style", "AI Product Photography", "AI Product Shot"];
+
 function allPlatforms() {
   return PLATFORM_ORDER.filter((p) => Object.values(EP).some((e) => e.p.includes(p)));
 }
 
 function renderEngineOptions(platform, selected) {
   return ENGINE_GROUPS.map(group => {
-    const items = group.items.filter(name => EP[name] && (!platform || EP[name].p.includes(platform)));
+    const items = group.items.filter(name => EP[name] && (!platform || EP[name].p.includes(platform)) && (!isFreeMode || FREE_MODELS.includes(name)));
     if (!items.length) return "";
     return `<optgroup label="${group.label}">${items.map(name => `<option value="${name}"${name === selected ? " selected" : ""}>${name}</option>`).join("")}</optgroup>`;
   }).join("");
@@ -704,8 +739,8 @@ function syncModelSelectors(source) {
     const currentPlatform = platSel.value;
     const currentEngine = engineSel.value;
     const allowedEngines = currentPlatform
-      ? ENGINE_GROUPS.flatMap(group => group.items.filter(name => EP[name] && EP[name].p.includes(currentPlatform)))
-      : Object.keys(EP);
+      ? ENGINE_GROUPS.flatMap(group => group.items.filter(name => EP[name] && EP[name].p.includes(currentPlatform) && (!isFreeMode || FREE_MODELS.includes(name))))
+      : Object.keys(EP).filter(name => (!isFreeMode || FREE_MODELS.includes(name)));
     const allowedPlatforms = currentEngine ? getAllowedPlatforms(currentEngine) : allPlatforms();
 
     engineSel.innerHTML = `<option value="">— selecione a engine —</option>${renderEngineOptions(currentPlatform, currentEngine)}`;
@@ -2168,7 +2203,7 @@ function showVideoResult(url, opts = {}) {
 // ─── HISTORY ───────────────────────────────────────────────────────────────
 async function saveHist(item) {
   hist.unshift(item);
-  if (hist.length > 8) hist = hist.slice(0,8);
+  if (hist.length > 30) hist = hist.slice(0,30);
   try { localStorage.setItem("ak_hist", JSON.stringify(hist)); } catch(_) {}
   renderHist();
 }
