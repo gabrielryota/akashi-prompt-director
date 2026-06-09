@@ -1871,6 +1871,29 @@ async function sendGoogleImagen3Free(prompt) {
       if (/api key|key|permission|unauthorized|forbidden/i.test(errMsg)) {
         throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
       }
+      if (/responseformat|imageconfig|unknown name|cannot find field/i.test(errMsg)) {
+        const fallbackPayload = {
+          ...basePayload,
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"]
+          }
+        };
+        const retry = await generateGoogleImageWithModel(apiKey, model, fallbackPayload);
+        if (retry.response.ok) {
+          const parts = retry.data.candidates?.[0]?.content?.parts || [];
+          const imagePart = parts.find((part) => part.inlineData || part.inline_data);
+          const inlineData = imagePart?.inlineData || imagePart?.inline_data || {};
+          const base64 = inlineData.data || inlineData.bytesBase64Encoded || inlineData.bytes_base64_encoded || inlineData.bytesBase64 || inlineData.imageBytes || inlineData.image_bytes;
+          if (!base64) throw new Error("Google Image: sem imagem na resposta — " + JSON.stringify(retry.data));
+          const mimeType = inlineData.mimeType || inlineData.mime_type || "image/png";
+          const imageUrl = `data:${mimeType};base64,${base64}`;
+          localStorage.setItem("ak_google_free_model", model);
+          showImageResult(imageUrl, true, { title: "Google Image" });
+          return;
+        }
+        const retryMsg = retry.data?.error?.message || retry.body || `HTTP ${retry.response.status}`;
+        throw new Error(retryMsg);
+      }
       throw new Error(errMsg);
     }
     if (response.status === 429) {
@@ -1888,16 +1911,11 @@ async function sendGoogleImagen3Free(prompt) {
 }
 
 function buildGoogleImagePayload(model, ar, basePayload) {
-  const is31 = model === "gemini-3.1-flash-image" || model === "gemini-3-pro-image";
   return {
     ...basePayload,
     generationConfig: {
-      responseFormat: {
-        image: {
-          aspectRatio: ar,
-          ...(is31 ? { imageSize: "2K" } : {})
-        }
-      }
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: { aspectRatio: ar }
     }
   };
 }
