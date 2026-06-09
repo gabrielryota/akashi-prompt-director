@@ -704,7 +704,7 @@ function getVideoValues(engine, field) {
   return Array.isArray(meta[field]) ? meta[field].slice() : [];
 }
 
-const FREE_MODELS = ["Imagine", "Chatgpt", "AI Background Remover", "AI Background Changer", "AI Image Extension", "AI Image Upscaler", "Topaz Image Upscale", "AI Object Eraser", "AI Face Swap", "AI Dress Change", "AI Clothes Changer", "AI Skin Enhancer", "AI Color Photo", "AI Ghibli Style", "AI Product Photography", "AI Product Shot"];
+const FREE_MODELS = ["Google Imagen 3", "Imagine", "Chatgpt", "AI Background Remover", "AI Background Changer", "AI Image Extension", "AI Image Upscaler", "Topaz Image Upscale", "AI Object Eraser", "AI Face Swap", "AI Dress Change", "AI Clothes Changer", "AI Skin Enhancer", "AI Color Photo", "AI Ghibli Style", "AI Product Photography", "AI Product Shot"];
 
 function allPlatforms() {
   return PLATFORM_ORDER.filter((p) => Object.values(EP).some((e) => e.p.includes(p)));
@@ -713,7 +713,6 @@ function allPlatforms() {
 function renderEngineOptions(platform, selected) {
   if (isFreeMode) {
     return `<optgroup label="Imagem — Gratuito">
-      <option value="Pollinations (Flux)"${selected === "Pollinations (Flux)" ? " selected" : ""}>Pollinations (Flux)</option>
       <option value="Google Imagen 3"${selected === "Google Imagen 3" ? " selected" : ""}>Google Imagen 3</option>
     </optgroup>`;
   }
@@ -775,14 +774,10 @@ function syncModelSelectors(source) {
     platSel.innerHTML = `<option value="">— selecione a plataforma —</option>${renderPlatformOptions(currentEngine, currentPlatform)}`;
 
     if (isFreeMode) {
-      if (!currentEngine || !FREE_MODELS.includes(currentEngine)) {
-        engineSel.value = "Pollinations (Flux)";
-      } else {
-        engineSel.value = currentEngine;
-      }
+      engineSel.value = currentEngine && FREE_MODELS.includes(currentEngine) ? currentEngine : "Google Imagen 3";
       platSel.innerHTML = `<option value="Free Platform" selected>Free Platform</option>`;
       platSel.value = "Free Platform";
-      document.getElementById("platNote").textContent = engineSel.value === "Google Imagen 3" ? "Requer API key do Google AI Studio nas configurações." : "Zero configuração. Gratuito e sem limites.";
+      document.getElementById("platNote").textContent = "Requer API key do Google AI Studio nas configurações.";
     } else {
       if (source === "platform") {
         if (currentEngine && allowedEngines.includes(currentEngine)) engineSel.value = currentEngine;
@@ -845,6 +840,14 @@ let keys = { anthropic:"", openai:"", muapi:"", imagineart:"", google:"" };
 let prefs = { muapiProxy:"", bridgeToken:"" };
 let makeItReal = false;
 
+const STORAGE_KEYS = {
+  keys: "ak_keys",
+  prefs: "ak_prefs",
+  googleKey: "akashi_google_api_key",
+  muapiProxy: "ak_muapi_proxy",
+  bridgeToken: "ak_bridge_token",
+};
+
 const MAKE_IT_REAL_TEXT = "The final image should feel raw, effortless, and genuine—like an unposed everyday portrait, captured naturally in available light, without heavy editing, beauty filters, or excessive retouching.";
 
 const KEY_DEFS = [
@@ -865,10 +868,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   buildPrefFields();
   buildKeyFields();
   try {
-    const k = sessionStorage.getItem("ak_keys") || localStorage.getItem("ak_keys");
-    if (k) { keys = JSON.parse(k); applyKeysToFields(); }
-    const p = sessionStorage.getItem("ak_prefs") || localStorage.getItem("ak_prefs");
-    if (p) { prefs = JSON.parse(p); applyPrefsToFields(); }
+    const storedKeys = readStoredJSON(STORAGE_KEYS.keys);
+    if (storedKeys) { keys = { ...keys, ...storedKeys }; applyKeysToFields(); }
+    const storedPrefs = readStoredJSON(STORAGE_KEYS.prefs);
+    if (storedPrefs) { prefs = { ...prefs, ...storedPrefs }; applyPrefsToFields(); }
+    const storedGoogleKey = localStorage.getItem(STORAGE_KEYS.googleKey) || sessionStorage.getItem(STORAGE_KEYS.googleKey) || "";
+    if (storedGoogleKey && !keys.google) keys.google = storedGoogleKey;
     const h = localStorage.getItem("ak_hist");
     if (h) hist = JSON.parse(h);
   } catch(_) {}
@@ -878,6 +883,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderVault();
   renderHist();
 });
+
+function readStoredJSON(key) {
+  const localValue = localStorage.getItem(key);
+  if (localValue) return JSON.parse(localValue);
+  const sessionValue = sessionStorage.getItem(key);
+  if (sessionValue) {
+    localStorage.setItem(key, sessionValue);
+    return JSON.parse(sessionValue);
+  }
+  return null;
+}
 
 function buildKeyFields() {
   const container = document.getElementById("keyFields");
@@ -915,7 +931,7 @@ function buildPrefFields() {
 
 function applyKeysToFields() {
   const elGoogle = document.getElementById("ki_akashi_google_api_key");
-  if (elGoogle) elGoogle.value = localStorage.getItem("akashi_google_api_key") || "";
+  if (elGoogle) elGoogle.value = keys.google || localStorage.getItem(STORAGE_KEYS.googleKey) || sessionStorage.getItem(STORAGE_KEYS.googleKey) || "";
 
   KEY_DEFS.forEach(d => {
     const el = document.getElementById("ki_"+d.id);
@@ -949,7 +965,11 @@ function clearRefs() {
 
 function saveKeys() {
   const elGoogle = document.getElementById("ki_akashi_google_api_key");
-  if (elGoogle) localStorage.setItem("akashi_google_api_key", elGoogle.value.trim());
+  if (elGoogle) {
+    const googleKey = elGoogle.value.trim();
+    localStorage.setItem(STORAGE_KEYS.googleKey, googleKey);
+    sessionStorage.setItem(STORAGE_KEYS.googleKey, googleKey);
+  }
 
   PREF_DEFS.forEach(d => {
     const el = document.getElementById("pi_"+d.id);
@@ -959,14 +979,14 @@ function saveKeys() {
     const el = document.getElementById("ki_"+d.id);
     if (el) keys[d.id] = el.value.trim();
   });
-  sessionStorage.setItem("ak_muapi_proxy", prefs.muapiProxy || "");
-  sessionStorage.setItem("ak_bridge_token", prefs.bridgeToken || "");
-  sessionStorage.setItem("ak_prefs", JSON.stringify(prefs));
-  sessionStorage.setItem("ak_keys", JSON.stringify(keys));
-  localStorage.removeItem("ak_muapi_proxy");
-  localStorage.removeItem("ak_bridge_token");
-  localStorage.removeItem("ak_prefs");
-  localStorage.removeItem("ak_keys");
+  localStorage.setItem(STORAGE_KEYS.muapiProxy, prefs.muapiProxy || "");
+  localStorage.setItem(STORAGE_KEYS.bridgeToken, prefs.bridgeToken || "");
+  localStorage.setItem(STORAGE_KEYS.prefs, JSON.stringify(prefs));
+  localStorage.setItem(STORAGE_KEYS.keys, JSON.stringify(keys));
+  sessionStorage.setItem(STORAGE_KEYS.muapiProxy, prefs.muapiProxy || "");
+  sessionStorage.setItem(STORAGE_KEYS.bridgeToken, prefs.bridgeToken || "");
+  sessionStorage.setItem(STORAGE_KEYS.prefs, JSON.stringify(prefs));
+  sessionStorage.setItem(STORAGE_KEYS.keys, JSON.stringify(keys));
   updateKeyBadge();
   document.getElementById("keyBody").style.display = "none";
 }
@@ -1662,7 +1682,7 @@ function imagineArtStyle(engine) {
 }
 
 function getMuapiBaseUrl() {
-  const proxy = normalizeMuapiBaseUrl(prefs.muapiProxy || sessionStorage.getItem("ak_muapi_proxy") || localStorage.getItem("ak_muapi_proxy") || "");
+  const proxy = normalizeMuapiBaseUrl(prefs.muapiProxy || localStorage.getItem(STORAGE_KEYS.muapiProxy) || sessionStorage.getItem(STORAGE_KEYS.muapiProxy) || "");
   if (proxy) return proxy;
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.includes("ngrok")) {
@@ -1679,7 +1699,7 @@ function normalizeBridgeRoot(value) {
 }
 
 function getBridgeRoot() {
-  const stored = normalizeBridgeRoot(prefs.muapiProxy || sessionStorage.getItem("ak_muapi_proxy") || localStorage.getItem("ak_muapi_proxy") || "");
+  const stored = normalizeBridgeRoot(prefs.muapiProxy || localStorage.getItem(STORAGE_KEYS.muapiProxy) || sessionStorage.getItem(STORAGE_KEYS.muapiProxy) || "");
   if (stored) return stored;
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.includes("ngrok")) {
@@ -1689,7 +1709,7 @@ function getBridgeRoot() {
 }
 
 function getBridgeToken() {
-  return (prefs.bridgeToken || sessionStorage.getItem("ak_bridge_token") || localStorage.getItem("ak_bridge_token") || "").trim();
+  return (prefs.bridgeToken || localStorage.getItem(STORAGE_KEYS.bridgeToken) || sessionStorage.getItem(STORAGE_KEYS.bridgeToken) || "").trim();
 }
 
 function normalizeMuapiBaseUrl(value) {
@@ -1773,13 +1793,7 @@ async function sendToplatform() {
 
   try {
     if (isFreeMode) {
-      if (engine === "Pollinations (Flux)") {
-        await sendPollinationsFree(en);
-      } else if (engine === "Google Imagen 3") {
-        await sendGoogleImagen3Free(en);
-      } else {
-        throw new Error(`Engine "${engine}" não suportada no modo gratuito.`);
-      }
+      await sendFreeImage(engine, en);
     } else {
       if (platform === "Muapi.ai") {
         await sendMuapi(engine, en, neg);
@@ -1808,32 +1822,19 @@ function showGenError(msg) {
 }
 
 // ─── FREE MODE APIS ────────────────────────────────────────────────────────
-async function sendPollinationsFree(prompt) {
-  const encoded = encodeURIComponent(prompt);
-  const seed = Math.floor(Math.random() * 999999999);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?model=flux&width=1024&height=1024&nologo=true&seed=${seed}`;
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
-  
-  try {
-    const response = await fetch(url, { method: "GET", signal: controller.signal });
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    
-    const blob = await response.blob();
-    showImageResult(blob, false, { title: "Pollinations (Flux)" });
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      throw new Error("Pollinations está lento no momento. Tente novamente.");
-    }
-    throw e;
+async function sendFreeImage(engine, prompt) {
+  if (engine !== "Google Imagen 3") {
+    throw new Error(`Engine "${engine}" não suportada no modo gratuito.`);
   }
+  await sendGoogleImagen3Free(prompt);
+}
+
+function getStoredGoogleKey() {
+  return localStorage.getItem(STORAGE_KEYS.googleKey) || sessionStorage.getItem(STORAGE_KEYS.googleKey) || "";
 }
 
 async function sendGoogleImagen3Free(prompt) {
-  const apiKey = localStorage.getItem("akashi_google_api_key");
+  const apiKey = getStoredGoogleKey();
   if (!apiKey) {
     throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
   }
@@ -1854,7 +1855,7 @@ async function sendGoogleImagen3Free(prompt) {
   
   if (!response.ok) {
     if (response.status === 429) {
-      throw new Error("Limite do Google Imagen atingido. Aguarde alguns segundos e tente novamente, ou troque para Pollinations.");
+      throw new Error("Limite do Google Imagen atingido. Aguarde alguns segundos e tente novamente.");
     } else if (response.status === 400) {
       throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
     } else {
