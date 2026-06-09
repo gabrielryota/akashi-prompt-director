@@ -2325,7 +2325,7 @@ async function sendGemini(engine, prompt, neg) {
   const promptText = neg ? `${prompt}\n\nAvoid: ${neg}` : prompt;
   const isNano = /Nano Banana/i.test(engine);
   if (isNano) {
-    const model = engine.includes("Pro") ? "gemini-3-pro-image-preview" : "gemini-2.5-flash-image";
+    const model = engine.includes("Pro") ? "gemini-3-pro-image" : engine.includes("2") ? "gemini-3.1-flash-image" : "gemini-2.5-flash-image";
     const refsPayload = refs.filter(Boolean).map(ref => ({
       inlineData: { mimeType: ref.mt || "image/jpeg", data: ref.b64 }
     }));
