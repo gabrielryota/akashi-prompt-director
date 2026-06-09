@@ -13,7 +13,7 @@ Personal static web app for prompt generation and image/video platform handoff.
   - Models that do not accept references are blocked early with a clear message[cite: 1, 2].
   - Google `Nano Banana` models are treated as reference-capable[cite: 1, 2].
   - Google `Imagen 4 Ultra` / `Imagen 4 Pro` remain text-only in this app flow[cite: 1, 2].
-- Free mode is intentionally limited to a single image generator for stability: Google `Imagen 3`, backed by a user-provided Google AI Studio key.
+- Free mode is intentionally limited to a single image generator for stability: Google image generation via the Gemini API, backed by a user-provided Google AI Studio key.
 - Output vault is persistent in the browser via IndexedDB, so generated images and videos do not disappear when the result panel clears or refreshes[cite: 1, 2].
 - History is preserved locally in the browser (Limite expandido para 30 itens)[cite: 1, 2].
 - The app includes a password gate[cite: 1, 2].

@@ -704,7 +704,7 @@ function getVideoValues(engine, field) {
   return Array.isArray(meta[field]) ? meta[field].slice() : [];
 }
 
-const FREE_MODELS = ["Google Imagen 3", "Imagine", "Chatgpt", "AI Background Remover", "AI Background Changer", "AI Image Extension", "AI Image Upscaler", "Topaz Image Upscale", "AI Object Eraser", "AI Face Swap", "AI Dress Change", "AI Clothes Changer", "AI Skin Enhancer", "AI Color Photo", "AI Ghibli Style", "AI Product Photography", "AI Product Shot"];
+const FREE_MODELS = ["Google Image", "Imagine", "Chatgpt", "AI Background Remover", "AI Background Changer", "AI Image Extension", "AI Image Upscaler", "Topaz Image Upscale", "AI Object Eraser", "AI Face Swap", "AI Dress Change", "AI Clothes Changer", "AI Skin Enhancer", "AI Color Photo", "AI Ghibli Style", "AI Product Photography", "AI Product Shot"];
 
 function allPlatforms() {
   return PLATFORM_ORDER.filter((p) => Object.values(EP).some((e) => e.p.includes(p)));
@@ -713,7 +713,7 @@ function allPlatforms() {
 function renderEngineOptions(platform, selected) {
   if (isFreeMode) {
     return `<optgroup label="Imagem — Gratuito">
-      <option value="Google Imagen 3"${selected === "Google Imagen 3" ? " selected" : ""}>Google Imagen 3</option>
+      <option value="Google Image"${selected === "Google Image" ? " selected" : ""}>Google Image</option>
     </optgroup>`;
   }
   return ENGINE_GROUPS.map(group => {
@@ -774,7 +774,7 @@ function syncModelSelectors(source) {
     platSel.innerHTML = `<option value="">— selecione a plataforma —</option>${renderPlatformOptions(currentEngine, currentPlatform)}`;
 
     if (isFreeMode) {
-      engineSel.value = currentEngine && FREE_MODELS.includes(currentEngine) ? currentEngine : "Google Imagen 3";
+      engineSel.value = currentEngine && FREE_MODELS.includes(currentEngine) ? currentEngine : "Google Image";
       platSel.innerHTML = `<option value="Free Platform" selected>Free Platform</option>`;
       platSel.value = "Free Platform";
       document.getElementById("platNote").textContent = "Requer API key do Google AI Studio nas configurações.";
@@ -804,7 +804,7 @@ function syncModelSelectors(source) {
     if (isFreeMode) {
         const arSel = document.getElementById("arSel");
         const arCurrent = arSel.value;
-        const allowedAr = engine === "Google Imagen 3" ? ["1:1", "3:4", "4:3", "9:16", "16:9"] : ["1:1"];
+        const allowedAr = engine === "Google Image" ? ["1:1", "3:4", "4:3", "9:16", "16:9"] : ["1:1"];
         arSel.innerHTML = allowedAr.map(v => `<option value="${v}"${v === arCurrent ? " selected" : ""}>${v}</option>`).join("");
         if (!allowedAr.includes(arSel.value)) arSel.value = allowedAr[0];
         document.getElementById("videoOpts").style.display = "none";
@@ -1823,7 +1823,7 @@ function showGenError(msg) {
 
 // ─── FREE MODE APIS ────────────────────────────────────────────────────────
 async function sendFreeImage(engine, prompt) {
-  if (engine !== "Google Imagen 3") {
+  if (engine !== "Google Image") {
     throw new Error(`Engine "${engine}" não suportada no modo gratuito.`);
   }
   await sendGoogleImagen3Free(prompt);
@@ -1839,12 +1839,18 @@ async function sendGoogleImagen3Free(prompt) {
     throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
   }
   
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+  const model = "gemini-2.0-flash-preview-image-generation";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const ar = document.getElementById("arSel")?.value || "1:1";
   
   const payload = {
-    instances: [ { prompt: prompt } ],
-    parameters: { sampleCount: 1, aspectRatio: ar }
+    contents: [{
+      parts: [{ text: prompt }]
+    }],
+    generationConfig: {
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: { aspectRatio: ar }
+    }
   };
   
   const response = await fetch(url, {
@@ -1855,7 +1861,7 @@ async function sendGoogleImagen3Free(prompt) {
   
   if (!response.ok) {
     if (response.status === 429) {
-      throw new Error("Limite do Google Imagen atingido. Aguarde alguns segundos e tente novamente.");
+      throw new Error("Limite do Google Image atingido. Aguarde alguns segundos e tente novamente.");
     } else if (response.status === 400) {
       throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
     } else {
@@ -1865,11 +1871,15 @@ async function sendGoogleImagen3Free(prompt) {
   }
   
   const data = await response.json();
-  const base64 = data.predictions?.[0]?.bytesBase64Encoded;
-  if (!base64) throw new Error("Google Imagen 3: sem imagem na resposta — " + JSON.stringify(data));
-  
-  const imageUrl = `data:image/png;base64,${base64}`;
-  showImageResult(imageUrl, true, { title: "Google Imagen 3" });
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const imagePart = parts.find((part) => part.inlineData || part.inline_data);
+  const inlineData = imagePart?.inlineData || imagePart?.inline_data || {};
+  const base64 = inlineData.data || inlineData.bytesBase64Encoded || inlineData.bytes_base64_encoded || inlineData.bytesBase64 || inlineData.imageBytes || inlineData.image_bytes;
+  if (!base64) throw new Error("Google Image: sem imagem na resposta — " + JSON.stringify(data));
+
+  const mimeType = inlineData.mimeType || inlineData.mime_type || "image/png";
+  const imageUrl = `data:${mimeType};base64,${base64}`;
+  showImageResult(imageUrl, true, { title: "Google Image" });
 }
 
 // ─── MUAPI ────────────────────────────────────────────────────────────────
