@@ -1839,9 +1839,8 @@ async function sendGoogleImagen3Free(prompt) {
     throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
   }
   
-  const model = "gemini-2.0-flash-preview-image-generation";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const ar = document.getElementById("arSel")?.value || "1:1";
+  const models = await resolveGoogleFreeImageModels(apiKey);
   
   const payload = {
     contents: [{
@@ -1852,34 +1851,90 @@ async function sendGoogleImagen3Free(prompt) {
       imageConfig: { aspectRatio: ar }
     }
   };
-  
+
+  let lastModelError = null;
+  for (const model of models) {
+    const { response, body, data } = await generateGoogleImageWithModel(apiKey, model, payload);
+    if (response.ok) {
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((part) => part.inlineData || part.inline_data);
+      const inlineData = imagePart?.inlineData || imagePart?.inline_data || {};
+      const base64 = inlineData.data || inlineData.bytesBase64Encoded || inlineData.bytes_base64_encoded || inlineData.bytesBase64 || inlineData.imageBytes || inlineData.image_bytes;
+      if (!base64) throw new Error("Google Image: sem imagem na resposta — " + JSON.stringify(data));
+
+      const mimeType = inlineData.mimeType || inlineData.mime_type || "image/png";
+      const imageUrl = `data:${mimeType};base64,${base64}`;
+      localStorage.setItem("ak_google_free_model", model);
+      showImageResult(imageUrl, true, { title: "Google Image" });
+      return;
+    }
+
+    if (response.status === 400) {
+      throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
+    }
+    if (response.status === 429) {
+      throw new Error("Limite do Google Image atingido. Aguarde alguns segundos e tente novamente.");
+    }
+    if (response.status !== 404) {
+      const errMsg = data?.error?.message || body || `HTTP ${response.status}`;
+      throw new Error(errMsg);
+    }
+    lastModelError = model;
+    localStorage.removeItem("ak_google_free_model");
+  }
+
+  throw new Error(`Nenhum modelo gratuito de imagem do Google ficou disponível para esta chave${lastModelError ? ` (${lastModelError})` : ""}.`);
+}
+
+async function generateGoogleImageWithModel(apiKey, model, payload) {
+  const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error("Limite do Google Image atingido. Aguarde alguns segundos e tente novamente.");
-    } else if (response.status === 400) {
-      throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
-    } else {
-      const e = await response.json().catch(()=>({}));
-      throw new Error(e.error?.message || `HTTP ${response.status}`);
+  const text = await response.text().catch(() => "");
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      data = {};
     }
   }
-  
-  const data = await response.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  const imagePart = parts.find((part) => part.inlineData || part.inline_data);
-  const inlineData = imagePart?.inlineData || imagePart?.inline_data || {};
-  const base64 = inlineData.data || inlineData.bytesBase64Encoded || inlineData.bytes_base64_encoded || inlineData.bytesBase64 || inlineData.imageBytes || inlineData.image_bytes;
-  if (!base64) throw new Error("Google Image: sem imagem na resposta — " + JSON.stringify(data));
+  return { response, body: text, data };
+}
 
-  const mimeType = inlineData.mimeType || inlineData.mime_type || "image/png";
-  const imageUrl = `data:${mimeType};base64,${base64}`;
-  showImageResult(imageUrl, true, { title: "Google Image" });
+async function resolveGoogleFreeImageModels(apiKey) {
+  const cached = localStorage.getItem("ak_google_free_model") || "";
+  const candidates = ["gemini-3.1-flash-image", "gemini-2.5-flash-image"];
+  if (cached && candidates.includes(cached)) return [cached, ...candidates.filter(v => v !== cached)];
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (res.ok) {
+      const data = await res.json();
+      const models = Array.isArray(data.models) ? data.models : [];
+      const normalized = models.map(m => ({
+        name: String(m.name || "").replace(/^models\//, ""),
+        actions: [].concat(m.supportedActions || m.supported_actions || m.supportedGenerationMethods || m.supported_generation_methods || []),
+      }));
+      for (const candidate of candidates) {
+        const hit = normalized.find(m => m.name === candidate);
+        if (hit) {
+          const actions = hit.actions.map(v => String(v).toLowerCase());
+          if (!actions.length || actions.some(v => v.includes("generatecontent") || v.includes("generate_content") || v.includes("generate"))) {
+            localStorage.setItem("ak_google_free_model", candidate);
+            return [candidate, ...candidates.filter(v => v !== candidate)];
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  const fallback = candidates[0];
+  localStorage.setItem("ak_google_free_model", fallback);
+  return [fallback, ...candidates.filter(v => v !== fallback)];
 }
 
 // ─── MUAPI ────────────────────────────────────────────────────────────────
