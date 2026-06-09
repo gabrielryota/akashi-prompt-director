@@ -1842,18 +1842,15 @@ async function sendGoogleImagen3Free(prompt) {
   const ar = document.getElementById("arSel")?.value || "1:1";
   const models = await resolveGoogleFreeImageModels(apiKey);
   
-  const payload = {
+  const basePayload = {
     contents: [{
       parts: [{ text: prompt }]
     }],
-    generationConfig: {
-      responseModalities: ["TEXT", "IMAGE"],
-      imageConfig: { aspectRatio: ar }
-    }
   };
 
   let lastModelError = null;
   for (const model of models) {
+    const payload = buildGoogleImagePayload(model, ar, basePayload);
     const { response, body, data } = await generateGoogleImageWithModel(apiKey, model, payload);
     if (response.ok) {
       const parts = data.candidates?.[0]?.content?.parts || [];
@@ -1870,7 +1867,11 @@ async function sendGoogleImagen3Free(prompt) {
     }
 
     if (response.status === 400) {
-      throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
+      const errMsg = data?.error?.message || body || "HTTP 400";
+      if (/api key|key|permission|unauthorized|forbidden/i.test(errMsg)) {
+        throw new Error("API key do Google inválida. Acesse as configurações da aba FREE e insira sua chave do Google AI Studio.");
+      }
+      throw new Error(errMsg);
     }
     if (response.status === 429) {
       throw new Error("Limite do Google Image atingido. Aguarde alguns segundos e tente novamente.");
@@ -1886,11 +1887,29 @@ async function sendGoogleImagen3Free(prompt) {
   throw new Error(`Nenhum modelo gratuito de imagem do Google ficou disponível para esta chave${lastModelError ? ` (${lastModelError})` : ""}.`);
 }
 
+function buildGoogleImagePayload(model, ar, basePayload) {
+  const is31 = model === "gemini-3.1-flash-image" || model === "gemini-3-pro-image";
+  return {
+    ...basePayload,
+    generationConfig: {
+      responseFormat: {
+        image: {
+          aspectRatio: ar,
+          ...(is31 ? { imageSize: "2K" } : {})
+        }
+      }
+    }
+  };
+}
+
 async function generateGoogleImageWithModel(apiKey, model, payload) {
-  const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`;
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
     body: JSON.stringify(payload)
   });
   const text = await response.text().catch(() => "");
@@ -1911,7 +1930,9 @@ async function resolveGoogleFreeImageModels(apiKey) {
   if (cached && candidates.includes(cached)) return [cached, ...candidates.filter(v => v !== cached)];
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+      headers: { "x-goog-api-key": apiKey }
+    });
     if (res.ok) {
       const data = await res.json();
       const models = Array.isArray(data.models) ? data.models : [];
