@@ -43,11 +43,11 @@ const required = [
   "Bearer ${apiKey}",
   'model: "gemini-2.5-flash-image"',
   'response_format: "b64_json"',
-  "extra_body",
-  "aspect_ratio",
+  "size",
 ];
 
 const forbidden = [
+  "extra_body",
   "responseFormat",
   "responseModalities",
   "imageConfig",
