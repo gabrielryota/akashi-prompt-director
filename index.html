@@ -174,6 +174,11 @@ select option{background:var(--card)}
     <div id="keyBody" style="display:none;padding:16px;border-top:1px solid var(--border)">
       <div id="prefFields"></div>
       <div id="keyFields"></div>
+      <input type="file" id="keyImportInput" accept=".txt,.json,text/plain,application/json" style="display:none" onchange="importKeysFromFile(event)">
+      <button onclick="document.getElementById('keyImportInput').click()"
+        style="width:100%;padding:12px;background:var(--input);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:10px;letter-spacing:0.12em;border-radius:4px;cursor:pointer;margin-top:4px;-webkit-appearance:none">
+        IMPORTAR KEYS DE TXT/JSON
+      </button>
       <button onclick="saveKeys()"
         style="width:100%;padding:13px;background:var(--or);border:none;color:#000;font-family:var(--mono);font-size:11px;letter-spacing:0.14em;border-radius:4px;cursor:pointer;margin-top:4px;-webkit-appearance:none">
         SALVAR KEYS
@@ -989,6 +994,97 @@ function saveKeys() {
   sessionStorage.setItem(STORAGE_KEYS.keys, JSON.stringify(keys));
   updateKeyBadge();
   document.getElementById("keyBody").style.display = "none";
+}
+
+async function importKeysFromFile(event) {
+  const input = event.target;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const parsed = parseKeysFromText(text);
+    if (!parsed) {
+      showErr("Não consegui ler as keys desse arquivo.");
+      return;
+    }
+
+    keys = { ...keys, ...parsed.keys };
+    prefs = { ...prefs, ...parsed.prefs };
+
+    const elGoogle = document.getElementById("ki_akashi_google_api_key");
+    if (elGoogle && parsed.googleKey) elGoogle.value = parsed.googleKey;
+    KEY_DEFS.forEach(d => {
+      const el = document.getElementById("ki_"+d.id);
+      if (el && parsed.keys[d.id]) el.value = parsed.keys[d.id];
+    });
+    PREF_DEFS.forEach(d => {
+      const el = document.getElementById("pi_"+d.id);
+      if (el && parsed.prefs[d.id]) el.value = parsed.prefs[d.id];
+    });
+
+    if (parsed.googleKey) {
+      localStorage.setItem(STORAGE_KEYS.googleKey, parsed.googleKey);
+      sessionStorage.setItem(STORAGE_KEYS.googleKey, parsed.googleKey);
+      keys.google = parsed.googleKey;
+    }
+
+    localStorage.setItem(STORAGE_KEYS.keys, JSON.stringify(keys));
+    localStorage.setItem(STORAGE_KEYS.prefs, JSON.stringify(prefs));
+    sessionStorage.setItem(STORAGE_KEYS.keys, JSON.stringify(keys));
+    sessionStorage.setItem(STORAGE_KEYS.prefs, JSON.stringify(prefs));
+
+    updateKeyBadge();
+    showStatus("Keys importadas e salvas localmente.");
+    document.getElementById("keyBody").style.display = "none";
+  } catch (err) {
+    showErr(err.message || "Falha ao importar keys.");
+  } finally {
+    input.value = "";
+  }
+}
+
+function parseKeysFromText(text) {
+  const clean = String(text || "")
+    .replace(/\uFEFF/g, "")
+    .replace(/\u200B/g, "")
+    .replace(/\r/g, "");
+
+  const read = (...patterns) => {
+    for (const pattern of patterns) {
+      const match = clean.match(pattern);
+      if (match && match[1]) return match[1].trim();
+    }
+    return "";
+  };
+
+  const keysMap = {
+    anthropic: read(/(?:^|\n)\s*ANTHROPIC\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+    openai: read(/(?:^|\n)\s*OPEN\s*AI\s*\n\s*([^\n]+)\s*(?=\n|$)/i, /(?:^|\n)\s*OPENAI\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+    muapi: read(/(?:^|\n)\s*MUAPI\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+    imagineart: read(/(?:^|\n)\s*IMAGINEART\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+  };
+
+  const prefsMap = {
+    muapiProxy: read(/(?:^|\n)\s*USE ESTA URL NO APP\s*:\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+  };
+
+  const googleKey = read(
+    /(?:^|\n)\s*GOOGLE AI\s*\n\s*([^\n]+)\s*(?=\n|$)/i,
+    /(?:^|\n)\s*GEMINI API\s*\n\s*([^\n]+)\s*(?=\n|$)/i
+  );
+
+  const bridgeToken = read(/(?:^|\n)\s*YOUR API TOKEN\s*\n\s*([^\n]+)\s*(?=\n|$)/i);
+  if (bridgeToken) prefsMap.bridgeToken = bridgeToken;
+
+  const hasAny = Boolean(googleKey || prefsMap.muapiProxy || prefsMap.bridgeToken || Object.values(keysMap).some(Boolean));
+  if (!hasAny) return null;
+
+  return {
+    googleKey,
+    keys: keysMap,
+    prefs: prefsMap,
+  };
 }
 
 function updateKeyBadge() {
