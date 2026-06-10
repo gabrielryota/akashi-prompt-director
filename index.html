@@ -1045,46 +1045,72 @@ async function importKeysFromFile(event) {
 }
 
 function parseKeysFromText(text) {
-  const clean = String(text || "")
+  const cleanedText = String(text || "")
     .replace(/\uFEFF/g, "")
     .replace(/\u200B/g, "")
-    .replace(/\r/g, "");
+    .replace(/\u00A0/g, " ")
+    .replace(/\r/g, "\n")
+    .replace(/\u2028/g, "\n")
+    .replace(/\u2029/g, "\n");
 
-  const read = (...patterns) => {
-    for (const pattern of patterns) {
-      const match = clean.match(pattern);
-      if (match && match[1]) return match[1].trim();
+  const lines = cleanedText
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const normalized = lines.map(line => line.replace(/\s+/g, " ").trim());
+  const takeAfter = (...labels) => {
+    for (let i = 0; i < normalized.length; i++) {
+      const line = normalized[i];
+      if (labels.some(label => line.toUpperCase() === label.toUpperCase())) {
+        for (let j = i + 1; j < normalized.length; j++) {
+          const candidate = normalized[j];
+          if (!candidate) continue;
+          if (/^[A-Z0-9 _.-]{3,}$/.test(candidate) && candidate.length < 40 && !candidate.includes(" ")) continue;
+          return candidate;
+        }
+      }
     }
     return "";
   };
 
+  const findByPrefix = (pattern) => {
+    for (const line of normalized) {
+      if (pattern.test(line)) return line.replace(/\s+/g, "").trim();
+    }
+    return "";
+  };
+
+  const findAnywhere = (pattern) => {
+    const flat = cleanedText.replace(/\s+/g, "");
+    const match = flat.match(pattern);
+    return match ? match[0].trim() : "";
+  };
+
+  const anthropic = findByPrefix(/^sk-ant-/i) || findAnywhere(/sk-ant-[A-Za-z0-9_-]+/i) || takeAfter("ANTHROPIC");
+  const openai = findByPrefix(/^sk-proj-/i) || findAnywhere(/sk-proj-[A-Za-z0-9_-]+/i) || takeAfter("OPEN AI", "OPENAI");
+  const muapi = findByPrefix(/^[a-f0-9]{64}$/i) || findAnywhere(/[a-f0-9]{64}/i) || takeAfter("MUAPI");
+  const imagineart = findByPrefix(/^vk-/i) || findAnywhere(/vk-[A-Za-z0-9_-]+/i) || takeAfter("IMAGINEART");
+  const googleKey = findByPrefix(/^AQ\./i) || findAnywhere(/AQ\.[A-Za-z0-9_-]+/i) || takeAfter("GOOGLE AI", "GEMINI API");
+  const bridgeToken = findByPrefix(/^cfat_/i) || findAnywhere(/cfat_[A-Za-z0-9_-]+/i) || takeAfter("YOUR API TOKEN");
+  const muapiProxy = takeAfter("USE ESTA URL NO APP", "USE ESTA URL NO APP:");
+
   const keysMap = {
-    anthropic: read(/(?:^|\n)\s*ANTHROPIC\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
-    openai: read(/(?:^|\n)\s*OPEN\s*AI\s*\n\s*([^\n]+)\s*(?=\n|$)/i, /(?:^|\n)\s*OPENAI\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
-    muapi: read(/(?:^|\n)\s*MUAPI\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
-    imagineart: read(/(?:^|\n)\s*IMAGINEART\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+    anthropic,
+    openai,
+    muapi,
+    imagineart,
   };
 
   const prefsMap = {
-    muapiProxy: read(/(?:^|\n)\s*USE ESTA URL NO APP\s*:\s*\n\s*([^\n]+)\s*(?=\n|$)/i),
+    muapiProxy,
+    bridgeToken,
   };
 
-  const googleKey = read(
-    /(?:^|\n)\s*GOOGLE AI\s*\n\s*([^\n]+)\s*(?=\n|$)/i,
-    /(?:^|\n)\s*GEMINI API\s*\n\s*([^\n]+)\s*(?=\n|$)/i
-  );
-
-  const bridgeToken = read(/(?:^|\n)\s*YOUR API TOKEN\s*\n\s*([^\n]+)\s*(?=\n|$)/i);
-  if (bridgeToken) prefsMap.bridgeToken = bridgeToken;
-
-  const hasAny = Boolean(googleKey || prefsMap.muapiProxy || prefsMap.bridgeToken || Object.values(keysMap).some(Boolean));
+  const hasAny = Boolean(googleKey || muapiProxy || bridgeToken || Object.values(keysMap).some(Boolean));
   if (!hasAny) return null;
 
-  return {
-    googleKey,
-    keys: keysMap,
-    prefs: prefsMap,
-  };
+  return { googleKey, keys: keysMap, prefs: prefsMap };
 }
 
 function updateKeyBadge() {
