@@ -578,6 +578,67 @@ const ENGINE_GROUPS = [
   { label:"Ferramentas", items:["AI Background Remover","AI Background Changer","AI Image Extension","AI Image Upscaler","Topaz Image Upscale","AI Object Eraser","AI Face Swap","AI Dress Change","AI Clothes Changer","AI Skin Enhancer","AI Color Photo","AI Ghibli Style","AI Product Photography","AI Product Shot"] },
 ];
 
+const MUAPI_PLATFORM = "Muapi.ai";
+const MUAPI_ENGINE_GROUPS = [
+  {
+    label: "Vídeo",
+    items: ["Kling 3.0", "Kling 2.1", "Seedance 2.0", "Veo 3.1", "HappyHorse 1.0 ⚠", "Runway Gen-4", "Wan2.6 Video", "Wan2.5 Video"],
+  },
+  {
+    label: "Imagem — Base",
+    items: [
+      "GPT Image 2",
+      "GPT Image 1.5",
+      "GPT-4o Image",
+      "Gpt Image 2 Edit",
+      "GPT-4o Edit",
+      "Nano Banana",
+      "Nano Banana Pro",
+      "Nano Banana 2",
+      "Nano Banana Pro Edit",
+      "Nano Banana 2 Edit",
+      "Nano Banana Effects",
+      "Imagen 4 Ultra",
+      "Imagen 4 Pro",
+    ],
+  },
+  {
+    label: "Imagem — Flux",
+    items: [
+      "Flux Dev",
+      "Flux Kontext Pro",
+      "Flux Kontext Max",
+      "Flux Kontext Pro I2I",
+      "Flux Kontext Effects",
+      "Flux 2 Pro",
+      "Flux 2 Flex",
+      "Flux Pulid",
+      "Flux Redux",
+      "Krea Flux 1",
+    ],
+  },
+  {
+    label: "Imagem — Outras",
+    items: [
+      "Seedream v4",
+      "Seedream v4.5",
+      "Seedream 5.0",
+      "Seedream 5.0 Edit",
+      "Bytedance Seededit v3",
+      "Grok Imagine",
+      "xAI Grok Imagine",
+      "Ideogram v3",
+      "Qwen Image",
+      "Qwen Image Edit",
+      "Wan2.5 Image Edit",
+      "Minimax Image",
+      "Minimax Image 01 Subject Reference",
+      "Midjourney V7",
+      "Vidu Q2 Reference To Image",
+    ],
+  },
+];
+
 const MODEL_META = {
   "Kling 3.0": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1"], qualities:["basic","high"], durations:["5","8","10"] },
   "Kling 2.1": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1"], qualities:["basic","high"], durations:["5","8","10"] },
@@ -585,6 +646,7 @@ const MODEL_META = {
   "Veo 3.1": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1"], qualities:["basic","high"], durations:["8"] },
   "HappyHorse 1.0 ⚠": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1"], qualities:["basic","high"], durations:["5","8","10"] },
   "Runway Gen-4": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1","4:3","3:4","21:9"], qualities:[], durations:[] },
+  "Wan2.5 Video": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1"], qualities:["basic","high"], durations:["5","8","10"] },
   "Wan2.6 Video": { kind:"video", refMode:"none", aspect:["16:9","9:16","1:1"], qualities:["basic","high"], durations:["5","8","10"] },
   "GPT Image 2": { kind:"image", refMode:"optional-multi", maxRefs:16, aspectByPlatform:{ "Muapi.ai":["1:1","2:3","3:2"], "OpenAI API":["1:1","2:3","3:2"], "ImagineArt":["1:1","2:3","3:2"] } },
   "GPT Image 1.5": { kind:"image", refMode:"optional-multi", maxRefs:16, aspectByPlatform:{ "Muapi.ai":["1:1","2:3","3:2"], "OpenAI API":["1:1","2:3","3:2"], "ImagineArt":["1:1","2:3","3:2"] } },
@@ -602,11 +664,12 @@ const MODEL_META = {
   "Flux Kontext Pro": { kind:"image", refMode:"none", aspect:["16:9","9:16","1:1","4:3","3:4","21:9","16:21"] },
   "Flux Kontext Max": { kind:"image", refMode:"none", aspect:["16:9","9:16","1:1","4:3","3:4","21:9","16:21"] },
   "Flux Kontext Pro I2I": { kind:"image", refMode:"multi", maxRefs:10, aspect:["16:9","9:16","1:1","4:3","3:4","21:9","16:21"] },
-  "Flux Kontext Effects": { kind:"tool", refMode:"single", maxRefs:1 },
+  "Flux Kontext Effects": { kind:"image", refMode:"single", maxRefs:1, aspect:["16:9","9:16","1:1","4:3","3:4","21:9","16:21"] },
   "Flux 2 Pro": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16","4:3","3:4"] },
   "Flux 2 Flex": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16","4:3","3:4"] },
   "Flux Pulid": { kind:"image", refMode:"single", maxRefs:1, aspect:["1:1","16:9","9:16","4:3","3:4"] },
   "Flux Redux": { kind:"image", refMode:"single", maxRefs:1, aspect:["1:1","16:9","9:16","4:3","3:4"] },
+  "Krea Flux 1": { kind:"image", refMode:"none", aspect:["1:1","3:4","4:3","9:16","16:9","3:2","2:3","5:4","4:5","21:9"] },
   "Seedream 5.0": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16","4:3","3:4","2:3","3:2","21:9"] },
   "Seedream 5.0 Edit": { kind:"image", refMode:"multi", maxRefs:10, aspect:["1:1","16:9","9:16","4:3","3:4","2:3","3:2","21:9"] },
   "Seedream v4.5": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16","4:3","3:4","2:3","3:2","21:9"] },
@@ -617,7 +680,10 @@ const MODEL_META = {
   "Grok Imagine": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16"] },
   "Ideogram v3": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16","3:2","2:3"] },
   "Qwen Image Edit": { kind:"image", refMode:"multi", maxRefs:3, aspect:["1:1","16:9","9:16","4:3","3:4"] },
+  "Qwen Image": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16","3:2","2:3"] },
   "Wan2.5 Image Edit": { kind:"image", refMode:"single", maxRefs:1, aspect:["1:1","16:9","9:16","4:3","3:4"] },
+  "Wan2.6 Image Edit": { kind:"image", refMode:"single", maxRefs:1, aspect:["1:1","16:9","9:16","4:3","3:4"] },
+  "Minimax Image": { kind:"image", refMode:"none", aspect:["1:1","16:9","9:16"] },
   "Minimax Image 01 Subject Reference": { kind:"image", refMode:"single", maxRefs:1, aspect:["1:1","16:9","9:16"] },
   "Vidu Q2 Reference To Image": { kind:"image", refMode:"multi", maxRefs:7, aspect:["1:1","16:9","9:16","4:3","3:4","2:3","3:2","21:9"] },
   "AI Background Remover": { kind:"tool", refMode:"single", maxRefs:1 },
@@ -686,7 +752,7 @@ function getEngineMeta(engine) {
 }
 
 function getAllowedPlatforms(engine) {
-  return (EP[engine]?.p || []).slice();
+  return isFreeMode ? ["Free Platform"] : [MUAPI_PLATFORM];
 }
 
 function getAllowedAspectRatios(engine, platform) {
@@ -712,7 +778,7 @@ function getVideoValues(engine, field) {
 const FREE_MODELS = ["Google Image", "Imagine", "Chatgpt", "AI Background Remover", "AI Background Changer", "AI Image Extension", "AI Image Upscaler", "Topaz Image Upscale", "AI Object Eraser", "AI Face Swap", "AI Dress Change", "AI Clothes Changer", "AI Skin Enhancer", "AI Color Photo", "AI Ghibli Style", "AI Product Photography", "AI Product Shot"];
 
 function allPlatforms() {
-  return PLATFORM_ORDER.filter((p) => Object.values(EP).some((e) => e.p.includes(p)));
+  return isFreeMode ? ["Free Platform"] : [MUAPI_PLATFORM];
 }
 
 function renderEngineOptions(platform, selected) {
@@ -721,15 +787,15 @@ function renderEngineOptions(platform, selected) {
       <option value="Google Image"${selected === "Google Image" ? " selected" : ""}>Google Image</option>
     </optgroup>`;
   }
-  return ENGINE_GROUPS.map(group => {
-    const items = group.items.filter(name => EP[name] && (!platform || EP[name].p.includes(platform)) && (!isFreeMode || FREE_MODELS.includes(name)));
+  return MUAPI_ENGINE_GROUPS.map(group => {
+    const items = group.items.filter(name => MUAPI_SLUG[name]);
     if (!items.length) return "";
     return `<optgroup label="${group.label}">${items.map(name => `<option value="${name}"${name === selected ? " selected" : ""}>${name}</option>`).join("")}</optgroup>`;
   }).join("");
 }
 
 function renderPlatformOptions(engine, selected) {
-  const platforms = engine ? getAllowedPlatforms(engine) : allPlatforms();
+  const platforms = allPlatforms();
   return platforms.map(p => `<option value="${p}"${p === selected ? " selected" : ""}>${p}</option>`).join("");
 }
 
@@ -768,12 +834,10 @@ function syncModelSelectors(source) {
     const engineSel = document.getElementById("engineSel");
     const currentPlatform = platSel.value;
     const currentEngine = engineSel.value;
-    const allowedEngines = isFreeMode 
-      ? FREE_MODELS 
-      : (currentPlatform
-        ? ENGINE_GROUPS.flatMap(group => group.items.filter(name => EP[name] && EP[name].p.includes(currentPlatform)))
-        : Object.keys(EP));
-    const allowedPlatforms = isFreeMode ? ["Free Platform"] : (currentEngine ? getAllowedPlatforms(currentEngine) : allPlatforms());
+    const allowedEngines = isFreeMode
+      ? FREE_MODELS
+      : MUAPI_ENGINE_GROUPS.flatMap(group => group.items.filter(name => MUAPI_SLUG[name]));
+    const allowedPlatforms = isFreeMode ? ["Free Platform"] : [MUAPI_PLATFORM];
 
     engineSel.innerHTML = `<option value="">— selecione a engine —</option>${renderEngineOptions(currentPlatform, currentEngine)}`;
     platSel.innerHTML = `<option value="">— selecione a plataforma —</option>${renderPlatformOptions(currentEngine, currentPlatform)}`;
@@ -784,24 +848,22 @@ function syncModelSelectors(source) {
       platSel.value = "Free Platform";
       document.getElementById("platNote").textContent = "Requer API key do Google AI Studio nas configurações.";
     } else {
+      platSel.innerHTML = `<option value="${MUAPI_PLATFORM}" selected>${MUAPI_PLATFORM}</option>`;
+      platSel.value = MUAPI_PLATFORM;
       if (source === "platform") {
         if (currentEngine && allowedEngines.includes(currentEngine)) engineSel.value = currentEngine;
         else engineSel.value = "";
-        if (currentPlatform && allowedPlatforms.includes(currentPlatform)) platSel.value = currentPlatform;
-        else platSel.value = currentPlatform || "";
       } else if (source === "engine") {
-        if (currentPlatform && allowedPlatforms.includes(currentPlatform)) platSel.value = currentPlatform;
-        else platSel.value = "";
         if (currentEngine && allowedEngines.includes(currentEngine)) engineSel.value = currentEngine;
-        else engineSel.value = currentEngine || "";
+        else engineSel.value = currentEngine && allowedEngines.includes(currentEngine) ? currentEngine : "";
       } else {
         if (currentEngine && allowedEngines.includes(currentEngine)) engineSel.value = currentEngine;
         else engineSel.value = "";
-        if (currentPlatform && allowedPlatforms.includes(currentPlatform)) platSel.value = currentPlatform;
-        else platSel.value = "";
       }
       const note = document.getElementById("platNote");
-      note.textContent = engineSel.value && EP[engineSel.value] ? EP[engineSel.value].n : "";
+      note.textContent = engineSel.value && MUAPI_SLUG[engineSel.value]
+        ? (EP[engineSel.value]?.n || "MuAPI only.")
+        : "MuAPI only.";
     }
 
     const engine = engineSel.value;
@@ -1700,6 +1762,11 @@ const MUAPI_EDIT_IMAGE_FIELD = {
   "Nano Banana Pro Edit": "image_url",
   "Nano Banana 2 Edit": "image_url",
   "Seedream 5.0 Edit": "images_list",
+  "Flux Kontext Pro I2I": "images_list",
+  "Flux Kontext Effects": "image_url",
+  "Flux Pulid": "image_url",
+  "Flux Redux": "image_url",
+  "Krea Flux 1": "image_url",
   "Qwen Image Edit": "image_url",
   "Wan2.5 Image Edit": "image_url",
   "Wan2.6 Image Edit": "image_url",
@@ -1708,11 +1775,14 @@ const MUAPI_SLUG = {
   // VIDEO
   "Kling 3.0":         "kling-v3.0-pro-text-to-video",
   "Kling 2.1":         "kling-v2.1-master-t2v",
-  "Seedance 2.0":      "seedance-v2.0-t2v",
+  "Seedance 2.0":      "seedance-pro-t2v",
   "Veo 3.1":           "veo3.1-text-to-video",
-  "Wan2.6 Video":      "wan2.6-text-to-video",
+  "HappyHorse 1.0 ⚠":  "happy-horse-1-text-to-video-1080p",
+  "Runway Gen-4":      "runway-text-to-video",
   "Wan2.5 Video":      "wan2.5-text-to-video",
+  "Wan2.6 Video":      "wan2.6-text-to-video",
   // IMAGE
+  "Flux Dev":          "flux-dev",
   "GPT Image 2":       "gpt-image-2-text-to-image",
   "GPT Image 1.5":     "gpt-image-1.5",
   "GPT-4o Image":      "gpt4o-text-to-image",
@@ -1720,21 +1790,37 @@ const MUAPI_SLUG = {
   "GPT-4o Edit":       "gpt4o-image-to-image",
   "Nano Banana Pro":   "nano-banana-pro",
   "Nano Banana 2":     "nano-banana-2",
+  "Nano Banana Pro Edit": "nano-banana-pro-edit",
+  "Nano Banana 2 Edit": "nano-banana-2-edit",
+  "Nano Banana Effects": "nano-banana-effects",
   "Imagen 4 Ultra":    "google-imagen4-ultra",
   "Imagen 4 Pro":      "google-imagen4",
   "Flux Kontext Pro":  "flux-kontext-pro-t2i",
   "Flux Kontext Max":  "flux-kontext-max-t2i",
   "Flux Kontext Dev":  "flux-kontext-dev-t2i",
+  "Flux Kontext Pro I2I": "flux-kontext-pro-i2i",
+  "Flux Kontext Effects": "flux-kontext-effects",
   "Flux 2 Pro":        "flux-2-pro",
   "Flux 2 Flex":       "flux-2-flex",
-  "Flux 2 Klein 4b":   "flux-2-klein-4b",
-  "Flux 2 Klein 9b":   "flux-2-klein-9b",
-  "Seedream 5.0":      "seedream-5.0",
+  "Flux Pulid":        "flux-pulid",
+  "Flux Redux":        "flux-redux",
+  "Krea Flux 1":       "flux-krea-dev",
+  "Seedream v4":       "bytedance-seedream-v4",
   "Seedream v4.5":     "bytedance-seedream-v4.5",
+  "Seedream 5.0":      "bytedance-seedream-v5.0",
+  "Seedream 5.0 Edit": "bytedance-seedream-v5.0-edit",
+  "Bytedance Seededit v3": "bytedance-seededit-v3",
   "Grok Imagine":      "grok-imagine-text-to-image",
+  "xAI Grok Imagine":  "grok-imagine-text-to-image",
   "Ideogram v3":       "ideogram-v3-t2i",
+  "Qwen Image":        "qwen-image",
+  "Qwen Image Edit":   "qwen-image-edit",
   "Wan2.5 Image Edit": "wan2.5-text-to-image",
   "Wan2.6 Image Edit": "wan2.6-text-to-image",
+  "Minimax Image":     "minimax-image",
+  "Minimax Image 01 Subject Reference": "minimax-image-01-subject-reference",
+  "Midjourney V7":     "midjourney-v7",
+  "Vidu Q2 Reference To Image": "vidu-q2-reference-to-image",
 };
 
 const IMAGINEART_STYLE_OVERRIDES = {
@@ -1857,19 +1943,19 @@ function showGenCard(engine, platform) {
   document.getElementById("videoOpts").style.display = isVideo ? "block" : "none";
   document.getElementById("genCard").style.display = "";
   document.getElementById("genCardTitle").textContent = `GERAR — ${engine}`;
-  document.getElementById("sendBtn").innerHTML = `▶ GERAR VIA ${(platform||"plataforma").toUpperCase()}`;
+  document.getElementById("sendBtn").innerHTML = `▶ GERAR VIA ${platform === MUAPI_PLATFORM ? "MUAPI" : ((platform || MUAPI_PLATFORM).toUpperCase())}`;
   updateRefCompatibility();
   document.getElementById("genResult").innerHTML = "";
 }
 
 function validateSendState(engine, platform) {
   if (!engine) throw new Error("Selecione uma engine antes de enviar.");
-  if (!platform) throw new Error("Selecione uma plataforma antes de enviar.");
-  const allowedPlatforms = getAllowedPlatforms(engine);
-  if (allowedPlatforms.length && !allowedPlatforms.includes(platform)) {
-    throw new Error(`"${engine}" não roda em ${platform}. Escolha uma plataforma compatível.`);
+  if (isFreeMode) {
+    if (!platform) throw new Error("Selecione uma plataforma antes de enviar.");
+  } else if (platform !== MUAPI_PLATFORM) {
+    throw new Error(`"${engine}" só está configurada para ${MUAPI_PLATFORM} neste app.`);
   }
-  if (platform === "Muapi.ai" && !MUAPI_SLUG[engine]) {
+  if (!isFreeMode && !MUAPI_SLUG[engine]) {
     throw new Error(`"${engine}" ainda não está mapeada para envio via MuAPI neste app.`);
   }
   const refInfo = getRefCompatibility(engine, platform);
@@ -1897,7 +1983,7 @@ function validateSendState(engine, platform) {
 // ─── SEND TO PLATFORM ──────────────────────────────────────────────────────
 async function sendToplatform() {
   const engine   = document.getElementById("engineSel").value;
-  const platform = document.getElementById("platSel").value;
+  const platform = document.getElementById("platSel").value || MUAPI_PLATFORM;
   const en       = lastOut?.en;
   const neg      = lastOut?.neg;
   if (!en) return showGenError("Gere o prompt primeiro. O botão de envio só usa o EN já gerado.");
@@ -2435,7 +2521,7 @@ function queueVaultSave(src, kind, opts = {}) {
   if (opts.persist === false) return;
   const meta = {
     engine: opts.engine || document.getElementById("engineSel")?.value || "",
-    platform: opts.platform || document.getElementById("platformSel")?.value || "",
+    platform: opts.platform || document.getElementById("platSel")?.value || "",
     title: opts.title || "",
     label: opts.label || "",
     mime: opts.mime || ""
