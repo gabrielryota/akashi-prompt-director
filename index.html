@@ -129,6 +129,20 @@ select option{background:var(--card)}
 .vault-btn.or{border-color:var(--or2);color:var(--or);background:var(--or3)}
 .vault-btn:active{transform:scale(0.99)}
 .vault-btn.danger{border-color:#3a1010;color:var(--err)}
+
+/* RATING */
+.rating-block{margin-top:14px;padding:14px;background:var(--input);border:1px solid var(--border2);border-radius:6px}
+.rating-label{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;color:var(--t1);text-transform:uppercase;margin-bottom:8px}
+.stars{display:flex;gap:6px;margin-bottom:10px}
+.star{font-size:22px;cursor:pointer;color:var(--t2);transition:color 0.1s;-webkit-user-select:none;user-select:none;line-height:1}
+.star.on{color:var(--or)}
+.rating-notes{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--t0);font-family:var(--mono);font-size:11px;padding:10px;border-radius:4px;outline:none;resize:none;line-height:1.55;-webkit-appearance:none}
+.rating-notes:focus{border-color:var(--or2)}
+.rating-save{width:100%;margin-top:8px;padding:10px;background:none;border:1px solid var(--border2);color:var(--t1);font-family:var(--mono);font-size:9px;letter-spacing:0.14em;border-radius:4px;cursor:pointer;-webkit-appearance:none;transition:all 0.15s}
+.rating-save.ok{border-color:#1a3a1a;color:var(--ok)}
+
+/* TOOL SUGGEST */
+.tool-suggest{display:none;margin-top:8px;padding:10px 12px;background:#161008;border:1px solid #3a2a0a;border-radius:5px;font-family:var(--mono);font-size:10px;color:#c8a040;line-height:1.5}
 </style>
 </head>
 <body>
@@ -331,8 +345,9 @@ select option{background:var(--card)}
       </div>
 
       <div class="field">
-        <textarea id="ctx" rows="4" placeholder="Ex: fachada residencial concreto aparente tarde, mulher 30 anos café manhã janela, cenário urbano chuva Tokyo"></textarea>
+        <textarea id="ctx" rows="4" placeholder="Ex: fachada residencial concreto aparente tarde, mulher 30 anos café manhã janela, cenário urbano chuva Tokyo" oninput="debounceToolSuggest()"></textarea>
         <button class="btn-real" id="realBtn" onclick="toggleReal()" type="button">MAKE IT REAL</button>
+        <div class="tool-suggest" id="toolSuggestAlert"></div>
       </div>
 
       <div class="ref-header">
@@ -435,6 +450,18 @@ select option{background:var(--card)}
       </div>
       <button class="btn-gen" id="sendBtn" onclick="sendToplatform()">▶ GERAR</button>
       <div id="genResult" style="margin-top:14px"></div>
+      <div class="rating-block" id="ratingBlock" style="display:none">
+        <div class="rating-label">Avaliação do resultado</div>
+        <div class="stars" id="starsRow">
+          <span class="star" data-v="1" onclick="setRating(1)" onmouseover="hoverRating(1)" onmouseout="hoverRating(0)">★</span>
+          <span class="star" data-v="2" onclick="setRating(2)" onmouseover="hoverRating(2)" onmouseout="hoverRating(0)">★</span>
+          <span class="star" data-v="3" onclick="setRating(3)" onmouseover="hoverRating(3)" onmouseout="hoverRating(0)">★</span>
+          <span class="star" data-v="4" onclick="setRating(4)" onmouseover="hoverRating(4)" onmouseout="hoverRating(0)">★</span>
+          <span class="star" data-v="5" onclick="setRating(5)" onmouseover="hoverRating(5)" onmouseout="hoverRating(0)">★</span>
+        </div>
+        <textarea class="rating-notes" id="ratingNotes" rows="2" placeholder="Observação: o que funcionou, o que falhou, ajustes no prompt…"></textarea>
+        <button class="rating-save" id="ratingSaveBtn" onclick="saveRating()">SALVAR AVALIAÇÃO</button>
+      </div>
     </div>
   </div>
 
@@ -1242,6 +1269,22 @@ function idbDelete(db, id) {
   });
 }
 
+function idbUpdate(db, id, patch) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VAULT_DB_STORE, "readwrite");
+    const store = tx.objectStore(VAULT_DB_STORE);
+    const req = store.get(id);
+    req.onsuccess = () => {
+      const existing = req.result;
+      if (!existing) { reject(new Error("Item não encontrado no vault")); return; }
+      const updated = { ...existing, ...patch };
+      store.put(updated);
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("IndexedDB update failed"));
+  });
+}
+
 async function loadVaultItems() {
   try {
     const db = await openVaultDb();
@@ -1305,6 +1348,8 @@ function renderVault() {
     const type = item.kind === "video" ? "Vídeo" : "Imagem";
     const info = [type, item.engine, item.platform].filter(Boolean).join(" · ");
     const title = item.title || item.label || "Arquivo gerado";
+    const starsHtml = item.rating ? "★".repeat(item.rating) + "☆".repeat(5 - item.rating) : "";
+    const notesHtml = item.notes ? escapeHtml(item.notes) : "";
     return `
       <div class="vault-item">
         <div class="vault-head">
@@ -1312,6 +1357,8 @@ function renderVault() {
           <div class="vault-meta">
             <div class="vault-title">${escapeHtml(title)}</div>
             <div class="vault-sub">${escapeHtml(info || "sem metadados")}${item.ts ? " · " + escapeHtml(vaultTsLabel(item.ts)) : ""}</div>
+            ${starsHtml ? `<div style="font-size:13px;color:var(--or);margin-top:4px;letter-spacing:1px">${starsHtml}</div>` : ""}
+            ${notesHtml ? `<div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:3px;line-height:1.4;word-break:break-word">${notesHtml}</div>` : ""}
           </div>
         </div>
         <div class="vault-actions">
@@ -1369,7 +1416,7 @@ async function saveVaultItem(item) {
 async function persistVaultOutput(src, kind, meta = {}) {
   const captured = await captureVaultSource(src, kind, meta.mime);
   if (!captured) return null;
-  return saveVaultItem({
+  const saved = await saveVaultItem({
     kind,
     ...captured,
     engine: meta.engine || "",
@@ -1377,6 +1424,8 @@ async function persistVaultOutput(src, kind, meta = {}) {
     title: meta.title || "",
     label: meta.label || "",
   });
+  if (saved?.id) showRatingBlock(saved.id);
+  return saved;
 }
 
 async function removeVaultItem(id) {
@@ -1428,6 +1477,7 @@ function getKey(name) { return keys[name] || ""; }
 // ─── ENGINE / PLATFORM ─────────────────────────────────────────────────────
 function onEngine() {
   syncModelSelectors("engine");
+  checkToolSuggestion();
 }
 
 // ─── REF GRID ──────────────────────────────────────────────────────────────
@@ -1998,6 +2048,8 @@ async function sendToplatform() {
   btn.innerHTML = "↻ GERANDO…";
   const result = document.getElementById("genResult");
   result.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--t2)">enviando para ${platform}…</div>`;
+  const ratingBlock = document.getElementById("ratingBlock");
+  if (ratingBlock) ratingBlock.style.display = "none";
 
   try {
     if (isFreeMode) {
@@ -2533,6 +2585,122 @@ function showStatus(msg) {
   clearActiveResultUrl();
   const r = document.getElementById("genResult");
   r.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--t2)">${msg}</div>`;
+}
+
+// ─── SELF-LEARNING / RATING ────────────────────────────────────────────────
+let currentRating = 0;
+let currentVaultId = null;
+
+function showRatingBlock(vaultId) {
+  currentVaultId = vaultId;
+  currentRating = 0;
+  const block = document.getElementById("ratingBlock");
+  const notes = document.getElementById("ratingNotes");
+  const saveBtn = document.getElementById("ratingSaveBtn");
+  if (!block) return;
+  notes.value = "";
+  saveBtn.textContent = "SALVAR AVALIAÇÃO";
+  saveBtn.classList.remove("ok");
+  renderStars(0);
+  block.style.display = "block";
+}
+
+function renderStars(value) {
+  const stars = document.querySelectorAll("#starsRow .star");
+  stars.forEach(s => s.classList.toggle("on", parseInt(s.dataset.v) <= value));
+}
+
+function hoverRating(value) {
+  renderStars(value > 0 ? value : currentRating);
+}
+
+function setRating(value) {
+  currentRating = value;
+  renderStars(value);
+}
+
+async function saveRating() {
+  if (!currentVaultId) return;
+  const notes = document.getElementById("ratingNotes").value.trim();
+  const btn = document.getElementById("ratingSaveBtn");
+  try {
+    const db = await openVaultDb();
+    if (!db) return;
+    await idbUpdate(db, currentVaultId, { rating: currentRating, notes });
+    const item = vaultItems.find(v => v.id === currentVaultId);
+    if (item) { item.rating = currentRating; item.notes = notes; }
+    btn.textContent = "✓ SALVO";
+    btn.classList.add("ok");
+    renderVault();
+    setTimeout(() => { btn.textContent = "SALVAR AVALIAÇÃO"; btn.classList.remove("ok"); }, 2000);
+  } catch (e) {
+    console.warn("rating save failed", e);
+  }
+}
+
+// ─── TOOL SUGGESTION ──────────────────────────────────────────────────────
+const TOOL_SUGGEST_MAP = [
+  {
+    engines: ["Imagen 4 Ultra","Imagen 4 Pro","Nano Banana","Nano Banana Pro","Nano Banana 2"],
+    patterns: [/\bpesso|retr[ao]|modelo\b|rosto|face|skin|skin|corpo|mulher|homem|crian/i],
+    msg: "⚠ Imagen/Nano Banana tem restrições severas para imagens de pessoas. Considere GPT Image 2, Flux Dev ou ImagineArt para fotorrealismo humano."
+  },
+  {
+    engines: ["Flux Kontext Pro","Flux Kontext Max"],
+    patterns: [/\bcri[ae]|gera|novo|cena nova/i],
+    kind: "no-refs",
+    msg: "ℹ Flux Kontext é especializado em edição por contexto. Para geração pura, prefira Flux Dev ou Flux 2 Pro."
+  },
+  {
+    engines: ["AI Background Remover","AI Image Upscaler","Topaz Image Upscale","AI Skin Enhancer","AI Color Photo","AI Ghibli Style"],
+    patterns: [/.+/],
+    msg: "ℹ Esta é uma ferramenta de edição — o prompt é ignorado. Carregue a imagem de referência e clique em Gerar."
+  },
+  {
+    engines: ["Grok Imagine","xAI Grok Imagine"],
+    patterns: [/\barquitetu|fachada|interior|imóvel|imovel|constru/i],
+    msg: "⚠ Grok Imagine tem limitação em detalhes arquitetônicos. Para render de imóvel, prefira GPT Image 2 ou Flux 2 Pro."
+  },
+  {
+    engines: ["Ideogram v3"],
+    patterns: [/.+/],
+    inverse: true,
+    inversePattern: /\btexto|tipografia|letras|letreiro|escrit|word|text\b/i,
+    msg: "ℹ Ideogram brilha com texto na imagem. Se sua cena não tem texto, considere Flux 2 Pro ou GPT Image 2 para resultado mais fotorrealista."
+  },
+];
+
+let toolSuggestTimer = null;
+
+function debounceToolSuggest() {
+  clearTimeout(toolSuggestTimer);
+  toolSuggestTimer = setTimeout(checkToolSuggestion, 400);
+}
+
+function checkToolSuggestion() {
+  const engine = document.getElementById("engineSel")?.value || "";
+  const idea = document.getElementById("ctx")?.value || "";
+  const alert = document.getElementById("toolSuggestAlert");
+  if (!alert) return;
+  if (!engine || !idea.trim()) { alert.style.display = "none"; return; }
+
+  for (const rule of TOOL_SUGGEST_MAP) {
+    if (!rule.engines.includes(engine)) continue;
+    const matchesPattern = rule.patterns.some(p => p.test(idea));
+    if (rule.inverse) {
+      const hasKeyword = rule.inversePattern.test(idea);
+      if (!hasKeyword) {
+        alert.textContent = rule.msg;
+        alert.style.display = "block";
+        return;
+      }
+    } else if (matchesPattern) {
+      alert.textContent = rule.msg;
+      alert.style.display = "block";
+      return;
+    }
+  }
+  alert.style.display = "none";
 }
 
 function showImageResult(src, isBase64, opts = {}) {
