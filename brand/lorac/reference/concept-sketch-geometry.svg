@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 560" width="600" height="560">
+  <rect width="600" height="560" fill="#FFFFFF"/>
+
+  <!-- ===== SYMBOL: solid angular badge with knockout ===== -->
+  <!-- Solid badge (structure / protection) -->
+  <polygon points="240,108 360,108 360,200 300,270 240,200" fill="#1A1A1A" stroke-linejoin="miter"/>
+
+  <!-- Negative-space "L" (knockout) -->
+  <g fill="#FFFFFF">
+    <rect x="282" y="140" width="15" height="66"/>
+    <rect x="282" y="191" width="46" height="15"/>
+  </g>
+
+  <!-- Yellow directional chevron (DIRECTION / FLOW) -->
+  <path d="M272,214 L300,244 L328,214" fill="none" stroke="#F2B705" stroke-width="13" stroke-linejoin="miter" stroke-linecap="butt"/>
+
+  <!-- ===== WORDMARK ===== -->
+  <text x="300" y="378" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-size="74" font-weight="700"
+        letter-spacing="10" fill="#1A1A1A">LORAC</text>
+
+  <!-- ===== TAGLINE ===== -->
+  <text x="300" y="414" text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400"
+        letter-spacing="4.5" fill="#4A4A4A">CONSULTORIA E ASSESSORIA JURÍDICA DE TRÂNSITO</text>
+</svg>
