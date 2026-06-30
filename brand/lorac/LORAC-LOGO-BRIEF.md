@@ -4,6 +4,21 @@
 > geração possa ser executada sem novas perguntas ao cliente. Se algo aqui conflitar com um
 > pedido novo do cliente, o pedido novo vence.
 
+## ⛔ ALVO DE QUALIDADE x O QUE FOI REPROVADO (ler primeiro)
+O cliente foi enfático: **quer algo NA LINHA DA REFERÊNCIA G&O** (`reference/`) — um
+**monograma sofisticado e elaborado**, com construção fina e inteligente de letras
+**integradas dentro de uma marca contida** (emblema/crista), acabamento premium de estúdio.
+- **ALVO:** o nível e o espírito do símbolo G&O (ver `reference/ref-symbol-construction.png`
+  e `ref-symbol-elements.png`) — porém com a identidade LORAC e geometria angular.
+- **REPROVADO explicitamente pelo cliente** (NÃO entregar nada parecido):
+  - Marcas simplórias tipo "letra dentro de uma caixa/escudo" (o esboço
+    `concept-sketch-geometry` é exatamente o que ele NÃO quer — serve só de geometria bruta).
+  - Resultados genéricos/sem graça de gerador só-texto (Canva e Recraft sem referência visual).
+  - Qualquer coisa que pareça template barato.
+- A diferença entre "reprovado" e "alvo" é **nível de elaboração e sofisticação do monograma**.
+  Mire alto: linhas integradas, leitura inteligente da inicial, equilíbrio de cheios/vazios,
+  presença de marca premium — como a referência.
+
 ## Marca
 - **Nome:** LORAC
 - **Assinatura/tagline:** Consultoria e Assessoria Jurídica de Trânsito
