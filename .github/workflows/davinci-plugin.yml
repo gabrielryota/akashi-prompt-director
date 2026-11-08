@@ -7,6 +7,9 @@ on:
       - ".github/workflows/davinci-plugin.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   compile-check-linux:
     runs-on: ubuntu-latest
@@ -63,3 +66,17 @@ jobs:
         with:
           name: AM-Music-Fix-macOS-dmg
           path: davinci-am-music-fix/AM-Music-Fix-macOS.dmg
+
+      - name: Publish GitHub Release (direct download link)
+        working-directory: davinci-am-music-fix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=am-music-fix-v1.0.0
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" AM-Music-Fix-macOS.dmg --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" AM-Music-Fix-macOS.dmg --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "AM Music Fix para DaVinci Resolve (macOS)" \
+              --notes "Baixe o AM-Music-Fix-macOS.dmg abaixo, abra e dê dois cliques em Instalar.command."
+          fi
